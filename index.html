@@ -8,13 +8,13 @@
 :root{
   --ink:#1f2a44;
   --ink-soft:#667085;
-  --paper:#f4f7fb;
+  --paper:#fff8ed;
   --panel:#ffffff;
-  --panel-soft:#f8fbff;
-  --line:#d8e1ee;
+  --panel-soft:#fffaf2;
+  --line:#eadcc8;
   --navy:#2e5b96;
   --navy-deep:#17365f;
-  --gold:#c79a45;
+  --gold:#ffc067;
   --good:#23815d;
   --warn:#b56a2d;
   --bad:#b53d3d;
@@ -30,7 +30,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0}
 body{
   font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  background:linear-gradient(180deg,#eef3fa 0%,#f9fbfe 100%);
+  background:linear-gradient(180deg,#fff4e2 0%,#fffaf3 100%);
   color:var(--ink)
 }
 @media (prefers-color-scheme: dark){
@@ -113,9 +113,9 @@ input:focus,select:focus,textarea:focus{
   padding:20px;
   overflow:auto;
   background:
-    radial-gradient(circle at 15% 15%, rgba(199,154,69,.16), transparent 28%),
-    radial-gradient(circle at 85% 80%, rgba(46,91,150,.14), transparent 30%),
-    linear-gradient(135deg,#eef4fb 0%,#fbfcfe 52%,#eef3f9 100%);
+    radial-gradient(circle at 15% 15%, rgba(255,192,103,.48), transparent 31%),
+    radial-gradient(circle at 86% 80%, rgba(255,192,103,.30), transparent 34%),
+    linear-gradient(135deg,#ffe0ad 0%,#fff4df 48%,#ffc067 100%);
 }
 .login-scene{
   position:relative;
@@ -134,7 +134,7 @@ input:focus,select:focus,textarea:focus{
   height:470px;
   transform:translate(-50%,-49%);
   pointer-events:none;
-  filter:drop-shadow(0 34px 58px rgba(36,70,112,.16));
+  filter:drop-shadow(0 34px 58px rgba(142,95,28,.20));
 }
 .book-glow{
   position:absolute;
@@ -144,7 +144,7 @@ input:focus,select:focus,textarea:focus{
   height:260px;
   transform:translate(-50%,-50%);
   border-radius:50%;
-  background:radial-gradient(ellipse at center, rgba(111,151,205,.18) 0%, rgba(199,154,69,.08) 45%, transparent 72%);
+  background:radial-gradient(ellipse at center, rgba(255,192,103,.38) 0%, rgba(255,192,103,.18) 46%, transparent 74%);
   animation:bookGlow 5s ease-in-out infinite;
 }
 .open-book{
@@ -161,16 +161,16 @@ input:focus,select:focus,textarea:focus{
 .page-turn,
 .page-side{
   background:
-    linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(244,248,253,.95) 100%),
-    repeating-linear-gradient(to bottom,rgba(76,104,142,.12) 0 1px,transparent 1px 20px);
+    linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(255,248,236,.96) 100%),
+    repeating-linear-gradient(to bottom,rgba(160,111,44,.13) 0 1px,transparent 1px 20px);
 }
 .book-page{
   position:absolute;
   top:36px;
   width:346px;
   height:268px;
-  border:1px solid rgba(86,123,170,.16);
-  box-shadow:0 18px 42px rgba(31,57,91,.10), inset 0 0 40px rgba(255,255,255,.46);
+  border:1px solid rgba(177,123,45,.18);
+  box-shadow:0 18px 42px rgba(124,82,24,.12), inset 0 0 40px rgba(255,255,255,.54);
   overflow:hidden;
 }
 .book-page.left{
@@ -222,8 +222,8 @@ input:focus,select:focus,textarea:focus{
   align-self:flex-start;
   padding:5px 10px;
   border-radius:999px;
-  background:rgba(46,91,150,.08);
-  color:#365f95;
+  background:rgba(255,192,103,.26);
+  color:#8b5b1f;
   font-size:11px;
   font-weight:800;
   letter-spacing:.08em;
@@ -309,20 +309,37 @@ input:focus,select:focus,textarea:focus{
   position:absolute;
   left:50%;
   top:50%;
-  width:720px;
-  height:390px;
+  width:790px;
+  height:430px;
   transform:translate(-50%,-50%);
-  border:1px dashed rgba(199,154,69,.28);
+  border:2px dashed rgba(176,105,16,.78);
   border-radius:50%;
-  animation:orbitDrift 18s linear infinite;
+  box-shadow:
+    0 0 0 8px rgba(255,192,103,.10),
+    0 0 34px rgba(255,162,45,.38),
+    inset 0 0 24px rgba(255,192,103,.12);
+  animation:orbitDrift 15s linear infinite;
+}
+.academic-orbit::before,
+.academic-orbit::after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  border:1.5px solid rgba(255,192,103,.56);
+  inset:18px 28px;
+}
+.academic-orbit::after{
+  inset:-22px -34px;
+  border-style:dotted;
+  border-color:rgba(139,82,14,.46);
 }
 .academic-dot{
   position:absolute;
   width:9px;
   height:9px;
   border-radius:50%;
-  background:rgba(199,154,69,.72);
-  box-shadow:0 0 0 7px rgba(199,154,69,.08);
+  background:#ffc067;
+  box-shadow:0 0 0 7px rgba(255,192,103,.22),0 0 18px rgba(180,103,7,.42);
 }
 .academic-dot.d1{left:70px;top:110px;animation:dotFloat 4.2s ease-in-out infinite}
 .academic-dot.d2{right:82px;top:96px;animation:dotFloat 5.1s ease-in-out infinite .7s}
@@ -346,8 +363,8 @@ input:focus,select:focus,textarea:focus{
   gap:8px;
   padding:7px 16px;
   border-radius:999px;
-  background:rgba(199,154,69,.13);
-  color:#835e1e;
+  background:rgba(255,192,103,.34);
+  color:#75490f;
   font-size:12px;
   font-weight:800;
   letter-spacing:.08em;
@@ -405,9 +422,9 @@ input:focus,select:focus,textarea:focus{
   transition:background .2s ease, transform .2s ease
 }
 .navitem:hover{background:rgba(255,255,255,.08);transform:translateX(2px)}
-.navitem.active{background:linear-gradient(90deg,rgba(255,211,140,.95) 0%,rgba(199,154,69,.95) 100%);color:#1b2430;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.16)}
+.navitem.active{background:linear-gradient(90deg,#ffd28f 0%,#ffc067 100%);color:#1b2430;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.16)}
 #logout{margin-top:20px;font-size:13px;color:#d6deee;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 14px;width:100%;text-decoration:none}
-main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f5f8fc 0%,var(--paper) 100%)}
+main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#fff8ed 0%,var(--paper) 100%)}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}
 .topbar .theme-toggle{font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--ink-soft);font-weight:700;box-shadow:var(--shadow-soft)}
 .page-head small{display:block;color:var(--ink-soft);font-size:13px;margin-top:2px}
@@ -446,7 +463,7 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
 .bulletin-label{
   flex:0 0 auto;
   padding:16px 18px;
-  background:linear-gradient(135deg,#d9a54b 0%,#bc8330 100%);
+  background:linear-gradient(135deg,#ffc067 0%,#e69a31 100%);
   color:#fff;
   font-size:12px;
   letter-spacing:.08em;
@@ -519,7 +536,7 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
   .page-copy,.page-list li{font-size:11px}
   .book-spine{top:44px;height:192px}
   .page-turn{width:232px;height:192px;top:42px}
-  .academic-orbit{width:500px;height:290px}
+  .academic-orbit{width:540px;height:310px}
   .login-box{padding:24px 20px}
   .login-box h1{font-size:30px;margin-bottom:18px}
   .bulletin-label{padding:14px 12px}
