@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -710,6 +710,186 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
 .workspace-progress{background:rgba(39,79,135,.13)}.workspace-progress span{background:linear-gradient(90deg,#ffc067,#e2962e)}
 .workspace-caption{color:#8a5c1a}.workspace-note{color:#6e7790}
 
+
+
+/* ---- Complete dark mode ---- */
+:root[data-theme="dark"] body{
+  background:linear-gradient(180deg,#08101f 0%,#0d1728 100%);
+  color:var(--ink);
+}
+:root[data-theme="dark"] #app{background:#0b1322}
+:root[data-theme="dark"] main{
+  background:
+    radial-gradient(circle at 82% 0%,rgba(255,192,103,.07),transparent 28%),
+    linear-gradient(135deg,#0b1322 0%,#101b2e 56%,#172238 130%);
+}
+:root[data-theme="dark"] #sidebar{
+  background:linear-gradient(180deg,#09152a 0%,#071121 100%);
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.05)
+}
+:root[data-theme="dark"] .sidebar-panel{border-bottom-color:rgba(255,255,255,.07)}
+:root[data-theme="dark"] #sidebar .who{background:rgba(255,255,255,.055);color:#dce6f6}
+:root[data-theme="dark"] .navitem{color:#d6e0ef}
+:root[data-theme="dark"] .navitem:hover{background:rgba(255,255,255,.07)}
+:root[data-theme="dark"] .navitem.active{background:rgba(255,192,103,.13);border-left-color:#ffc067;color:#fff}
+:root[data-theme="dark"] #logout{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);color:#e8eef9}
+
+:root[data-theme="dark"] .topbar .theme-toggle{
+  background:linear-gradient(180deg,#17243a 0%,#111c2f 100%);
+  border-color:#31405a;
+  color:#f2f5fb;
+  box-shadow:0 10px 24px rgba(0,0,0,.24)
+}
+:root[data-theme="dark"] .page-head small,
+:root[data-theme="dark"] .muted{color:#9eacc1}
+
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .home-hero-card,
+:root[data-theme="dark"] .home-side-stat,
+:root[data-theme="dark"] .quick-card,
+:root[data-theme="dark"] .notice-board-card,
+:root[data-theme="dark"] .chat-contacts,
+:root[data-theme="dark"] .chat-panel{
+  background:linear-gradient(180deg,#172236 0%,#121c2e 100%);
+  border-color:#2c3b55;
+  box-shadow:0 16px 34px rgba(0,0,0,.24)
+}
+:root[data-theme="dark"] .home-hero-card h3,
+:root[data-theme="dark"] .notice-card strong,
+:root[data-theme="dark"] .notice-entry strong,
+:root[data-theme="dark"] .chat-header strong{color:#f1f5fb}
+:root[data-theme="dark"] .home-hero-card p,
+:root[data-theme="dark"] .notice-card p,
+:root[data-theme="dark"] .notice-entry p,
+:root[data-theme="dark"] .home-side-stat .sub,
+:root[data-theme="dark"] .quick-card .caption{color:#aab7ca}
+:root[data-theme="dark"] .home-side-stat .small,
+:root[data-theme="dark"] .quick-card .title{color:#c4a86e}
+:root[data-theme="dark"] .home-side-stat .big,
+:root[data-theme="dark"] .quick-card .value{color:#ffc067}
+:root[data-theme="dark"] .eyebrow{background:rgba(255,192,103,.14);color:#ffd28f}
+:root[data-theme="dark"] .chip,
+:root[data-theme="dark"] .hero-badges .chip{
+  background:#1b2940;
+  border-color:#31415d;
+  color:#dce7f7
+}
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea{
+  background:#101a2b;
+  color:#edf2fb;
+  border-color:#31415b
+}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder{color:#7f8da5}
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus{
+  border-color:#ffc067;
+  box-shadow:0 0 0 4px rgba(255,192,103,.10)
+}
+
+:root[data-theme="dark"] .module-search input{
+  background:#121d30;
+  border-color:#34445f;
+  box-shadow:0 8px 22px rgba(0,0,0,.18)
+}
+:root[data-theme="dark"] .module-search::before{color:#d9b474}
+:root[data-theme="dark"] .module-filter{
+  background:#152137;
+  color:#cbd6e7;
+  border-color:#31415b
+}
+:root[data-theme="dark"] .module-filter:hover{background:#1a2942}
+:root[data-theme="dark"] .module-filter.active{
+  background:#ffc067;
+  border-color:#ffc067;
+  color:#1a2942
+}
+:root[data-theme="dark"] .module-section-title{color:#d6b879}
+:root[data-theme="dark"] .module-card{
+  background:linear-gradient(180deg,#172438 0%,#121c2e 100%);
+  border-color:#2f405c;
+  box-shadow:0 12px 28px rgba(0,0,0,.23)
+}
+:root[data-theme="dark"] .module-card:hover{
+  border-color:rgba(255,192,103,.56);
+  box-shadow:0 18px 38px rgba(0,0,0,.32)
+}
+:root[data-theme="dark"] .module-card-icon{
+  background:linear-gradient(135deg,rgba(255,192,103,.22),rgba(255,156,45,.14));
+  border:1px solid rgba(255,192,103,.20)
+}
+:root[data-theme="dark"] .module-card strong{color:#f0f4fb}
+:root[data-theme="dark"] .module-card small{color:#9eacc1}
+:root[data-theme="dark"] .module-card .live-pill{
+  background:rgba(255,192,103,.14);
+  color:#ffd28f
+}
+:root[data-theme="dark"] .modules-empty{
+  color:#9eacc1;
+  background:#121d30;
+  border-color:#34445f
+}
+
+:root[data-theme="dark"] .chat-contacts p,
+:root[data-theme="dark"] .chat-user-meta small,
+:root[data-theme="dark"] .chat-file-name{color:#8f9db3}
+:root[data-theme="dark"] .chat-user-btn{
+  background:#111c2e;
+  color:#dce6f5;
+  border:1px solid transparent
+}
+:root[data-theme="dark"] .chat-user-btn:hover,
+:root[data-theme="dark"] .chat-user-btn.active{
+  background:#1a2941;
+  border-color:#3a4b68
+}
+:root[data-theme="dark"] .chat-header{
+  background:#131f33;
+  border-bottom-color:#2c3c56
+}
+:root[data-theme="dark"] .chat-thread{background:#0f1929}
+:root[data-theme="dark"] .chat-empty{color:#8796ad}
+:root[data-theme="dark"] .chat-bubble{
+  background:#1b2940;
+  border-color:#33445f;
+  color:#e3eaf5;
+  box-shadow:0 7px 18px rgba(0,0,0,.18)
+}
+:root[data-theme="dark"] .chat-row.mine .chat-bubble{background:#315e9c;color:#fff}
+:root[data-theme="dark"] .chat-compose{
+  background:#111c2d;
+  border-top-color:#2e3f5a
+}
+:root[data-theme="dark"] .chat-file-btn{
+  background:#17243a;
+  color:#ffc067;
+  border-color:#34445e
+}
+
+:root[data-theme="dark"] .notice-entry,
+:root[data-theme="dark"] .holiday-row{border-bottom-color:#2d3d56}
+:root[data-theme="dark"] .holiday-date{color:#ffc067}
+:root[data-theme="dark"] .holiday-name{color:#e4eaf4}
+
+:root[data-theme="dark"] table{background:transparent}
+:root[data-theme="dark"] th{color:#9eacc1}
+:root[data-theme="dark"] td{color:#dce4f0;border-bottom-color:#2c3b54}
+:root[data-theme="dark"] .section h2{color:#edf2fb;border-bottom-color:#ffc067}
+:root[data-theme="dark"] .userRow{border-bottom-color:#2d3c55}
+:root[data-theme="dark"] .upload-row input[type=file]{background:#101a2b;color:#dce4ef}
+
+:root[data-theme="dark"] .workspace-footer{
+  background:#060d19;
+  border:1px solid #202f48;
+  box-shadow:0 16px 36px rgba(0,0,0,.30)
+}
+
+/* Keep the login and sign-in transition warm; dark mode applies after entry. */
+
 @media (max-width:900px){.workspace-footer{flex-direction:column;align-items:flex-start}.chat-layout,.notice-board-grid{grid-template-columns:1fr}.chat-contacts{max-height:none}.chat-user-list{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));max-height:none}}
 @media (max-width:680px){#app{grid-template-columns:1fr}#sidebar{height:auto;position:relative}.module-grid{grid-template-columns:1fr 1fr}.chat-row{max-width:90%}.welcome-headline{font-size:36px}.welcome-user{font-size:34px}}
 @media (max-width:480px){.module-grid{grid-template-columns:1fr}.module-search{min-width:100%}}
@@ -911,7 +1091,7 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
         <h2 id="pageTitle" style="border:none;font-size:28px;margin:0"></h2>
         <small id="pageSubTitle">A clean and simple school operations dashboard.</small>
       </div>
-      <button class="theme-toggle" onclick="toggleTheme()">Toggle theme</button>
+      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">☾ Dark mode</button>
     </div>
     <div id="view"></div>
   </main>
@@ -1157,10 +1337,30 @@ function signOut(){
   document.getElementById('loginUser').value=''; document.getElementById('loginPass').value='';
   document.getElementById('loginMsg').textContent='';
 }
-function toggleTheme(){
-  const r=document.documentElement;
-  r.setAttribute('data-theme', r.getAttribute('data-theme')==='dark' ? 'light' : 'dark');
+function updateThemeToggleLabel(){
+  const btn=document.getElementById('themeToggle');
+  if(!btn) return;
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  btn.textContent=dark?'☀ Light mode':'☾ Dark mode';
+  btn.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');
 }
+function setTheme(theme){
+  const value=theme==='dark'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',value);
+  try{localStorage.setItem('vidyalaya_theme',value);}catch(e){}
+  updateThemeToggleLabel();
+}
+function toggleTheme(){
+  const current=document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';
+  setTheme(current==='dark'?'light':'dark');
+}
+(function initTheme(){
+  let saved='light';
+  try{saved=localStorage.getItem('vidyalaya_theme')||'light';}catch(e){}
+  document.documentElement.setAttribute('data-theme',saved==='dark'?'dark':'light');
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateThemeToggleLabel);
+  else updateThemeToggleLabel();
+})();
 
 /* ---------------- Nav ---------------- */
 function renderNav(){
