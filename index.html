@@ -1288,6 +1288,63 @@ function readSheet(file, done, msgId){
 
 /* ---------------- Auth ---------------- *//* ---------------- Auth ---------------- */
 let welcomeTimers=[];
+
+function playLoginWelcomeVoice(){
+  // Use a Hindi (India) TTS voice so the English greeting is spoken
+  // in a Hindi-speaking Indian style rather than a US/UK accent.
+  if(!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance==='undefined') return;
+
+  const speakHindiStyleEnglish = () => {
+    try{
+      window.speechSynthesis.cancel();
+
+      // Devanagari transliteration intentionally produces the Hindi-English style:
+      // "Welcome to Vidyalaya E R P"
+      const utterance = new SpeechSynthesisUtterance('वेलकम टू विद्यालय ई आर पी');
+      utterance.lang = 'hi-IN';
+      utterance.rate = 0.88;
+      utterance.pitch = 1.0;
+      utterance.volume = 1;
+
+      const voices = window.speechSynthesis.getVoices();
+
+      // Prefer genuine Hindi-India voices first.
+      const hindiIndia = voices.filter(v => /^hi-IN$/i.test(v.lang));
+      const preferredHindi =
+        hindiIndia.find(v => /hemant|kalpana|madhur|swara|hindi|india|natural/i.test(v.name)) ||
+        hindiIndia.find(v => /microsoft|google/i.test(v.name)) ||
+        hindiIndia[0];
+
+      if(preferredHindi){
+        utterance.voice = preferredHindi;
+      }else{
+        // Secondary fallback: any Hindi voice.
+        const anyHindi = voices.find(v => /^hi(?:-|$)/i.test(v.lang));
+        if(anyHindi) utterance.voice = anyHindi;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    }catch(err){
+      // Login continues even if speech is unavailable.
+    }
+  };
+
+  const currentVoices = window.speechSynthesis.getVoices();
+  if(currentVoices.length){
+    speakHindiStyleEnglish();
+  }else{
+    let spoken = false;
+    const onVoicesChanged = () => {
+      if(spoken) return;
+      spoken = true;
+      window.speechSynthesis.removeEventListener?.('voiceschanged', onVoicesChanged);
+      speakHindiStyleEnglish();
+    };
+    window.speechSynthesis.addEventListener?.('voiceschanged', onVoicesChanged);
+    setTimeout(onVoicesChanged, 500);
+  }
+}
+
 function clearWelcomeSequence(){
   welcomeTimers.forEach(t=>clearTimeout(t));
   welcomeTimers=[];
@@ -1326,11 +1383,13 @@ function doSignIn(e){
   processMonthlyFees();
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.remove('on');
+  playLoginWelcomeVoice();
   showWelcomeSequence();
   return false;
 }
 function signOut(){
   clearWelcomeSequence();
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
   USER=null;
   document.getElementById('app').classList.remove('on');
   document.getElementById('login').style.display='flex';
