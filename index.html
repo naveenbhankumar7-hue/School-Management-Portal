@@ -103,6 +103,7 @@ input:focus,select:focus,textarea:focus{
 .msg{font-size:13px;margin-top:8px}
 .msg.err{color:var(--bad)}
 .msg.ok{color:var(--good)}
+.msg.warn{color:var(--warn)}
 
 /* ---- Login ---- */
 #login{
@@ -1451,7 +1452,7 @@ const SEED = {
   users:[
     {id:1,username:"admin",password:"admin",displayName:"Administrator",role:"Admin",access:[...DEFAULT_ACCESS.Admin]},
     {id:2,username:"teacher",password:"teacher",displayName:"Mrs. Anita Verma",role:"Teacher",access:[...DEFAULT_ACCESS.Teacher]},
-    {id:3,username:"parent",password:"parent",displayName:"Rohit Mehta (Parent)",role:"Parent",access:[...DEFAULT_ACCESS.Parent]}
+    {id:3,username:"parent",password:"parent",displayName:"Rohit Mehta (Parent)",role:"Parent",linkedStudentIds:[1],access:[...DEFAULT_ACCESS.Parent]}
   ],
   students:[
     {id:1,name:"Aarav Mehta",cls:"6-A",feeDue:4200,monthlyFee:2500,attendance:"92%",guardian:"Rohit Mehta",guardianPhone:"9876543210",studentCode:"STU-001"},
@@ -1547,60 +1548,157 @@ const MODULE_META = {
 };
 
 function loadData(){
-  try{ const raw = localStorage.getItem('vidyalaya_data_v5'); if(raw) return JSON.parse(raw); }catch(e){}
+  try{
+    const raw=localStorage.getItem('vidyalaya_data_v5');
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(parsed && typeof parsed==='object') return parsed;
+    }
+  }catch(e){ console.warn('Stored portal data could not be loaded; using safe defaults.',e); }
   return JSON.parse(JSON.stringify(SEED));
 }
-function saveData(){ try{ localStorage.setItem('vidyalaya_data_v5', JSON.stringify(DATA)); }catch(e){} }
+let LAST_SAVE_ERROR='';
+function saveData(){
+  try{
+    localStorage.setItem('vidyalaya_data_v5',JSON.stringify(DATA));
+    LAST_SAVE_ERROR='';
+    return true;
+  }catch(e){
+    LAST_SAVE_ERROR=(e&&e.message)?e.message:'Browser storage is unavailable or full.';
+    console.error('Vidyalaya data save failed:',e);
+    return false;
+  }
+}
 let DATA = loadData();
 let USER = null, CURRENT = 'dashboard';
-const canEdit = roles => roles.includes(USER.role);
+const canEdit = roles => !!USER && roles.includes(USER.role);
 
 function monthKey(d=new Date()){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function monthLabel(d=new Date()){ return d.toLocaleString(undefined,{month:'short',year:'numeric'}); }
 function normalizeData(){
-  DATA.feeMeta = DATA.feeMeta || {lastProcessedMonth:monthKey()};
-  DATA.biometric = DATA.biometric || {apiUrl:''};
-  DATA.chatMessages = Array.isArray(DATA.chatMessages) ? DATA.chatMessages : [];
-  DATA.holidays = Array.isArray(DATA.holidays) && DATA.holidays.length ? DATA.holidays : JSON.parse(JSON.stringify(SEED.holidays || []));
-  DATA.students = DATA.students || [];
-  DATA.students.forEach((s,i)=>{ if(typeof s.monthlyFee!=='number') s.monthlyFee=0; if(s.guardianPhone===undefined) s.guardianPhone='—'; if(!s.studentCode) s.studentCode='STU-'+String(s.id||i+1).padStart(3,'0'); });
-  DATA.libraryTransactions = DATA.libraryTransactions || [];
-  DATA.studyMaterial = DATA.studyMaterial || [];
-  DATA.studyMaterial.forEach((m,i)=>{ if(!m.id) m.id=i+1; if(m.fileName===undefined) m.fileName=''; if(m.dataUrl===undefined) m.dataUrl=''; });
-  DATA.salary = DATA.salary || [];
+  if(!DATA || typeof DATA!=='object') DATA=JSON.parse(JSON.stringify(SEED));
+  const seeded=['users','students','feeLedger','teachers','staffLog','leaves','salary','timetable','library','ptm','reportcards','homework','studyMaterial','notices','holidays'];
+  seeded.forEach(k=>{ if(!Array.isArray(DATA[k])) DATA[k]=JSON.parse(JSON.stringify(SEED[k]||[])); });
+  if(!Array.isArray(DATA.libraryTransactions)) DATA.libraryTransactions=[];
+  if(!Array.isArray(DATA.chatMessages)) DATA.chatMessages=[];
+  DATA.feeMeta=(DATA.feeMeta&&typeof DATA.feeMeta==='object')?DATA.feeMeta:{lastProcessedMonth:monthKey()};
+  if(!DATA.feeMeta.lastProcessedMonth) DATA.feeMeta.lastProcessedMonth=monthKey();
+  DATA.biometric=(DATA.biometric&&typeof DATA.biometric==='object')?DATA.biometric:{apiUrl:''};
+  if(typeof DATA.biometric.apiUrl!=='string') DATA.biometric.apiUrl='';
+
+  const validRoles=Object.keys(DEFAULT_ACCESS);
+  DATA.users.forEach((u,i)=>{
+    if(!Number.isFinite(Number(u.id))) u.id=i+1;
+    u.id=Number(u.id);
+    if(!u.username) u.username='user'+u.id;
+    if(!u.displayName) u.displayName=u.username;
+    if(!validRoles.includes(u.role)) u.role='Staff';
+    if(!Array.isArray(u.access)) u.access=[...DEFAULT_ACCESS[u.role]];
+    u.access=[...new Set(['dashboard',...u.access.filter(k=>ALL_MODULES.includes(k))])];
+    if(u.role==='Parent'){
+      if(!Array.isArray(u.linkedStudentIds)) u.linkedStudentIds=[];
+      u.linkedStudentIds=u.linkedStudentIds.map(Number).filter(Number.isFinite);
+    }
+  });
+
+  DATA.students.forEach((s,i)=>{
+    if(!Number.isFinite(Number(s.id))) s.id=i+1;
+    s.id=Number(s.id);
+    if(typeof s.monthlyFee!=='number') s.monthlyFee=Number(s.monthlyFee)||0;
+    if(typeof s.feeDue!=='number') s.feeDue=Number(s.feeDue)||0;
+    if(s.guardian===undefined) s.guardian='—';
+    if(s.guardianPhone===undefined) s.guardianPhone='—';
+    if(!s.studentCode) s.studentCode='STU-'+String(s.id||i+1).padStart(3,'0');
+    if(s.attendance===undefined) s.attendance='—';
+  });
+
+  // Recover parent links for older saved data by matching guardian names.
+  DATA.users.filter(u=>u.role==='Parent').forEach(u=>{
+    if(u.linkedStudentIds.length) return;
+    const base=String(u.displayName||u.username||'').replace(/\s*\(parent\)\s*/ig,'').trim().toLowerCase();
+    const matches=DATA.students.filter(s=>String(s.guardian||'').trim().toLowerCase()===base).map(s=>s.id);
+    if(matches.length) u.linkedStudentIds=matches;
+  });
+
   DATA.salary.forEach(x=>{ if(x.presentDays===undefined) x.presentDays='—'; if(x.leaveDays===undefined) x.leaveDays='—'; });
-  DATA.library = DATA.library || [];
+  DATA.timetable.forEach(r=>{ if(!r.cls) r.cls='General'; });
+  DATA.studyMaterial.forEach((m,i)=>{ if(!m.id) m.id=i+1; if(m.fileName===undefined) m.fileName=''; if(m.dataUrl===undefined) m.dataUrl=''; });
   DATA.library.forEach((b,i)=>{
     if(!b.accessionNo) b.accessionNo='LIB-'+String(i+1).padStart(4,'0');
     if(!b.author) b.author='—';
     if(b.totalCopies===undefined) b.totalCopies=1;
+    b.totalCopies=Math.max(1,Number(b.totalCopies)||1);
     if(b.availableCopies===undefined) b.availableCopies=(b.issuedTo && b.issuedTo!=='—')?0:b.totalCopies;
+    b.availableCopies=Math.max(0,Math.min(b.totalCopies,Number(b.availableCopies)||0));
     if(!b.category) b.category='—';
   });
   if(!DATA.libraryTransactions.length){
     DATA.library.forEach(b=>{
       if(b.issuedTo && b.issuedTo!=='—'){
         const st=DATA.students.find(x=>x.name===b.issuedTo);
-        DATA.libraryTransactions.push({id:DATA.libraryTransactions.length+1,accessionNo:b.accessionNo,title:b.title,studentId:st?st.id:null,studentName:b.issuedTo,issueDate:'Existing record',dueDate:b.due||'—',returnDate:'',status:'Issued'});
+        DATA.libraryTransactions.push({id:DATA.libraryTransactions.length+1,accessionNo:b.accessionNo,title:b.title,studentId:st?st.id:null,studentName:b.issuedTo,studentClass:st?st.cls:'—',issueDate:'Existing record',dueDate:b.due||'—',returnDate:'',status:'Issued'});
       }
     });
   }
 }
 normalizeData();
+saveData();
 
+function todayLabel(){ return new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+function monthDateFromKey(key){
+  const m=String(key||'').match(/^(\d{4})-(\d{2})$/); if(!m) return null;
+  const d=new Date(Number(m[1]),Number(m[2])-1,1); return Number.isNaN(d.getTime())?null:d;
+}
 function processMonthlyFees(){
   const current=monthKey();
-  if(!DATA.feeMeta.lastProcessedMonth){ DATA.feeMeta.lastProcessedMonth=current; saveData(); return; }
-  if(DATA.feeMeta.lastProcessedMonth===current) return;
-  DATA.students.forEach(s=>{
-    const fee=Number(s.monthlyFee)||0;
-    if(fee>0){
+  const last=monthDateFromKey(DATA.feeMeta.lastProcessedMonth);
+  const now=monthDateFromKey(current);
+  if(!last||!now){ DATA.feeMeta.lastProcessedMonth=current; saveData(); return; }
+  const diff=(now.getFullYear()-last.getFullYear())*12+(now.getMonth()-last.getMonth());
+  if(diff<=0){ if(diff<0){DATA.feeMeta.lastProcessedMonth=current;saveData();} return; }
+  const months=Math.min(diff,24); // safety cap for corrupted/very old saved data
+  for(let step=1;step<=months;step++){
+    const d=new Date(last.getFullYear(),last.getMonth()+step,1);
+    const key=monthKey(d);
+    DATA.students.forEach(s=>{
+      const fee=Number(s.monthlyFee)||0;
+      if(fee<=0) return;
+      const note='Monthly fee — '+monthLabel(d);
+      const exists=DATA.feeLedger.some(l=>l.studentId===s.id && l.type==='Charge' && l.note===note);
+      if(exists) return;
       s.feeDue=(Number(s.feeDue)||0)+fee;
-      DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>l.id))+1,studentId:s.id,date:'1 '+monthLabel(),type:'Charge',amount:fee,note:'Monthly fee — '+monthLabel()});
-    }
-  });
+      DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:s.id,date:'1 '+monthLabel(d),type:'Charge',amount:fee,note,monthKey:key});
+    });
+  }
   DATA.feeMeta.lastProcessedMonth=current;
   saveData();
+}
+function parseNumberCell(v,fallback=0){
+  if(typeof v==='number') return Number.isFinite(v)?v:fallback;
+  const cleaned=String(v??'').replace(/[₹,\s]/g,'').replace(/[^0-9.+-]/g,'');
+  if(!cleaned) return fallback;
+  const n=Number(cleaned); return Number.isFinite(n)?n:fallback;
+}
+function normalizePersonName(v){return String(v||'').replace(/\s*\(parent\)\s*/ig,'').trim().toLowerCase();}
+function linkedStudentIdsForUser(user=USER){
+  if(!user) return [];
+  if(user.role!=='Parent') return DATA.students.map(s=>s.id);
+  let ids=Array.isArray(user.linkedStudentIds)?user.linkedStudentIds.map(Number).filter(Number.isFinite):[];
+  if(!ids.length){
+    const base=normalizePersonName(user.displayName||user.username);
+    ids=DATA.students.filter(s=>normalizePersonName(s.guardian)===base).map(s=>s.id);
+  }
+  return [...new Set(ids)];
+}
+function visibleStudentsForUser(){
+  if(!USER || USER.role!=='Parent') return DATA.students;
+  const ids=new Set(linkedStudentIdsForUser()); return DATA.students.filter(s=>ids.has(s.id));
+}
+function visibleClassSet(){return new Set(visibleStudentsForUser().map(s=>String(s.cls||'').toLowerCase()));}
+function canViewStudent(studentId){return !!USER && (USER.role!=='Parent' || linkedStudentIdsForUser().includes(Number(studentId)));}
+function nextAccessionNo(){
+  const max=DATA.library.reduce((m,b)=>{const x=String(b.accessionNo||'').match(/(\d+)$/);return Math.max(m,x?Number(x[1]):0)},0);
+  return 'LIB-'+String(max+1).padStart(4,'0');
 }
 
 function pick(row, names){
@@ -1608,17 +1706,49 @@ function pick(row, names){
   for(const k of keys){ if(wanted.includes(k.toLowerCase().replace(/[^a-z0-9]/g,''))) return row[k]; }
   return '';
 }
+function parseCsvText(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const rows=[]; let row=[],field='',quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(quoted){
+      if(c==='"' && text[i+1]==='"'){field+='"';i++;}
+      else if(c==='"') quoted=false;
+      else field+=c;
+    }else{
+      if(c==='"') quoted=true;
+      else if(c===','){row.push(field);field='';}
+      else if(c==='\n'){row.push(field);rows.push(row);row=[];field='';}
+      else if(c!=='\r') field+=c;
+    }
+  }
+  row.push(field); if(row.some(x=>String(x).trim()!=='')) rows.push(row);
+  if(!rows.length) return [];
+  const headers=rows.shift().map(h=>String(h).trim());
+  return rows.filter(r=>r.some(x=>String(x).trim()!=='')).map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])));
+}
 function readSheet(file, done, msgId){
   const msg=msgId?document.getElementById(msgId):null;
-  if(!file){ if(msg){msg.className='msg err';msg.textContent='Choose an Excel/CSV file first.';} return; }
-  if(typeof XLSX==='undefined'){ if(msg){msg.className='msg err';msg.textContent='Excel reader could not load. Connect to the internet once or upload CSV.';} return; }
+  if(!file){ if(msg){msg.className='msg err';msg.textContent='Choose an Excel or CSV file first.';} return; }
+  const isCsv=/\.csv$/i.test(file.name||'') || /csv/i.test(file.type||'');
+  if(isCsv){
+    const reader=new FileReader();
+    reader.onload=e=>{try{const rows=parseCsvText(e.target.result);if(!rows.length)throw new Error('The CSV has no data rows.');done(rows);}catch(err){if(msg){msg.className='msg err';msg.textContent='Could not read CSV: '+err.message;}}};
+    reader.onerror=()=>{if(msg){msg.className='msg err';msg.textContent='Could not read the selected CSV file.';}};
+    reader.readAsText(file); return;
+  }
+  if(typeof XLSX==='undefined'){
+    if(msg){msg.className='msg err';msg.textContent='Excel reader is unavailable. Save the sheet as CSV and upload the CSV instead.';}
+    return;
+  }
   const reader=new FileReader();
   reader.onload=e=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:''}); done(rows);
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''}); if(!rows.length) throw new Error('The sheet has no data rows.'); done(rows);
     }catch(err){ if(msg){msg.className='msg err';msg.textContent='Could not read sheet: '+err.message;} }
   };
+  reader.onerror=()=>{if(msg){msg.className='msg err';msg.textContent='Could not read the selected Excel file.';}};
   reader.readAsArrayBuffer(file);
 }
 
@@ -1736,7 +1866,7 @@ function doSignIn(e){
 function signOut(){
   clearWelcomeSequence();
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  USER=null;
+  USER=null; CHAT_TARGET='group';
   document.getElementById('app').classList.remove('on');
   document.getElementById('login').style.display='flex';
   document.getElementById('loginUser').value=''; document.getElementById('loginPass').value='';
@@ -1785,7 +1915,7 @@ function renderNav(){
 }
 
 /* ---------------- Helpers ---------------- *//* ---------------- Helpers ---------------- */
-function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function tbl(headers, rows){
   let h = '<table><thead><tr>'+headers.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>';
   if(!rows.length) return '<p class="empty">No records yet.</p>';
@@ -1868,7 +1998,7 @@ const VIEWS = {
       <button class="module-filter" onclick="setModuleFilter('Administration',this)">⚙ Administration</button>
     </div>
     <div id="modulesGridHost">${renderModuleGrid()}</div>
-    <footer class="workspace-footer"><div><strong>Vidyalaya ERP</strong><small>School Management Workspace</small></div><div class="workspace-footer-links"><button onclick="openCorePage('dashboard')">Home</button><button onclick="openCorePage('teamChat')">Team Chat</button><button onclick="openCorePage('noticeBoard')">Notice Board</button></div></footer>`;
+    <div class="card" style="margin-top:18px;padding:12px 15px"><strong style="font-size:12px">System note</strong><div class="muted" style="margin-top:4px">This standalone HTML stores data in this browser. Use the final server/database version for multi-device live data, secure passwords, biometric middleware and shared chat.</div></div><footer class="workspace-footer"><div><strong>Vidyalaya ERP</strong><small>School Management Workspace</small></div><div class="workspace-footer-links"><button onclick="openCorePage('dashboard')">Home</button><button onclick="openCorePage('teamChat')">Team Chat</button><button onclick="openCorePage('noticeBoard')">Notice Board</button></div></footer>`;
   },
 
   teamChat(){
@@ -1944,14 +2074,16 @@ const VIEWS = {
         <h3 style="font-size:15px">Manage class timetable</h3>
         <div class="muted">Admin and Teachers can manage it. Admin may also grant Timetable access to another staff user from User Management.</div>
         <div class="form-grid" style="margin-top:8px">
-          <div><label>Time</label><input id="ttTime" placeholder="8:00–8:45"></div><div><label>Monday</label><input id="ttMon"></div>
-          <div><label>Tuesday</label><input id="ttTue"></div><div><label>Wednesday</label><input id="ttWed"></div>
-          <div><label>Thursday</label><input id="ttThu"></div><div><label>Friday</label><input id="ttFri"></div>
+          <div><label>Class / Section</label><input id="ttClass" placeholder="e.g. 6-A"></div><div><label>Time</label><input id="ttTime" placeholder="8:00–8:45"></div>
+          <div><label>Monday</label><input id="ttMon"></div><div><label>Tuesday</label><input id="ttTue"></div>
+          <div><label>Wednesday</label><input id="ttWed"></div><div><label>Thursday</label><input id="ttThu"></div><div><label>Friday</label><input id="ttFri"></div>
         </div>
         <button class="btn" style="margin-top:10px" onclick="saveTimetableRow()">Add / Update Row</button><div id="ttMsg" class="msg"></div>
       </div>`;
     }
-    h += tbl(['Time','Mon','Tue','Wed','Thu','Fri',''],DATA.timetable.map((r,i)=>[esc(r.time),esc(r.mon),esc(r.tue),esc(r.wed),esc(r.thu),esc(r.fri),editable?`<button class="btn danger sm" onclick="deleteTimetableRow(${i})">Delete</button>`:'']));
+    const clsSet=visibleClassSet();
+    const ttRows=USER.role==='Parent'?DATA.timetable.map((r,i)=>({r,i})).filter(x=>String(x.r.cls||'General').toLowerCase()==='general'||clsSet.has(String(x.r.cls||'').toLowerCase())):DATA.timetable.map((r,i)=>({r,i}));
+    h += tbl(['Class','Time','Mon','Tue','Wed','Thu','Fri',''],ttRows.map(({r,i})=>[esc(r.cls||'General'),esc(r.time),esc(r.mon),esc(r.tue),esc(r.wed),esc(r.thu),esc(r.fri),editable?`<button class="btn danger sm" onclick="deleteTimetableRow(${i})">Delete</button>`:'']));
     return '<div class="section">'+h+'</div>';
   },
   staffAttendance(){
@@ -2001,7 +2133,9 @@ const VIEWS = {
     h+=`<div class="section"><h2>Inventory</h2>${tbl(['Accession No','Title','Author','Category','Available / Total'], DATA.library.map(b=>[
       esc(b.accessionNo),esc(b.title),esc(b.author||'—'),esc(b.category||'—'),esc((b.availableCopies??0)+' / '+(b.totalCopies??1))
     ]))}</div>`;
-    const txRows=[...DATA.libraryTransactions].reverse().map(tx=>[
+    const allowedStudentIds=new Set(linkedStudentIdsForUser());
+    const txSource=USER.role==='Parent'?DATA.libraryTransactions.filter(tx=>allowedStudentIds.has(Number(tx.studentId))):DATA.libraryTransactions;
+    const txRows=[...txSource].reverse().map(tx=>[
       esc(tx.id),esc(tx.studentName||'—'),esc(tx.title||'—'),esc(tx.issueDate||'—'),esc(tx.dueDate||'—'),esc(tx.returnDate||'—'),`<span class="tag ${tx.status==='Returned'?'good':'warn'}">${esc(tx.status)}</span>`,
       `<div class="action-row">${editable&&tx.status==='Issued'?`<button class="btn sm" onclick="returnLibraryBook(${tx.id})">IN / Return</button>`:''}<button class="btn ghost sm" onclick="printLibrarySlip(${tx.id})">Print Slip</button></div>`
     ]);
@@ -2032,7 +2166,7 @@ const VIEWS = {
         <div id="feeMsg" class="msg"></div>
       </div>`;
     }
-    const rows = (USER.role==='Parent' ? DATA.students.filter(s=>s.name==='Aarav Mehta') : DATA.students)
+    const rows = visibleStudentsForUser()
       .map(s=>[esc(s.name),esc(s.cls),`₹${Number(s.monthlyFee||0).toLocaleString('en-IN')}`, s.feeDue>0?`<span class="tag warn">₹${Number(s.feeDue).toLocaleString('en-IN')} due</span>`:'<span class="tag good">Paid</span>',
         `<button class="btn ghost sm" onclick="printFeeSlip(${s.id})">Print slip</button>`+
         (editable && s.feeDue>0 ? ` <button class="btn ghost sm" onclick="markPaid(${s.id})">Mark fully paid</button>` : '')]);
@@ -2084,7 +2218,8 @@ const VIEWS = {
         <div class="form-grid" style="margin-top:8px"><div><label>Class</label><input id="ptmClass" placeholder="e.g. 6-A"></div><div><label>Date & time</label><input id="ptmDate" placeholder="e.g. 4 Oct, 10:00 AM"></div><div><label>Teacher</label><input id="ptmTeacher" value="${USER.role==='Teacher'?esc(USER.displayName):''}"></div></div>
         <button class="btn" style="margin-top:10px" onclick="savePtm()">Save PTM</button><div id="ptmMsg" class="msg"></div></div>`;
     }
-    h += '<div class="section">'+tbl(['Class','Date & time','Teacher',''],DATA.ptm.map((p,i)=>[esc(p.cls),esc(p.date),esc(p.teacher), editable?`<button class="btn danger sm" onclick="deletePtm(${i})">Delete</button>`:'']))+'</div>';
+    const ptmRows=USER.role==='Parent'?DATA.ptm.map((p,i)=>({p,i})).filter(x=>visibleClassSet().has(String(x.p.cls||'').toLowerCase())):DATA.ptm.map((p,i)=>({p,i}));
+    h += '<div class="section">'+tbl(['Class','Date & time','Teacher',''],ptmRows.map(({p,i})=>[esc(p.cls),esc(p.date),esc(p.teacher), editable?`<button class="btn danger sm" onclick="deletePtm(${i})">Delete</button>`:'']))+'</div>';
     return h;
   },
 
@@ -2099,7 +2234,8 @@ const VIEWS = {
         <div id="reportMsg" class="msg"></div>
       </div>`;
     }
-    const list = (USER.role==='Parent' ? DATA.reportcards.filter(r=>studentName(r.studentId)==='Aarav Mehta') : DATA.reportcards);
+    const allowedIds=new Set(linkedStudentIdsForUser());
+    const list = USER.role==='Parent' ? DATA.reportcards.filter(r=>allowedIds.has(Number(r.studentId))) : DATA.reportcards;
     h += '<div class="section">'+tbl(['Student','Term','Subject / Result','Marks','Grade',''], list.map(r=>[
       esc(studentName(r.studentId)),esc(r.term),esc(r.subject||r.result||'—'), r.marksObtained!==undefined?esc(r.marksObtained+' / '+(r.maxMarks||'—')):'—',esc(r.grade||'—'),`<button class="btn ghost sm" onclick="printReportCard(${r.id})">Print</button>`
     ]))+'</div>';
@@ -2128,7 +2264,8 @@ const VIEWS = {
         <div class="form-grid" style="margin-top:8px"><div><label>Class</label><input id="hwClass"></div><div><label>Subject</label><input id="hwSubject"></div><div style="grid-column:1/-1"><label>Homework</label><input id="hwTask"></div><div><label>Due date</label><input id="hwDue"></div></div>
         <button class="btn" style="margin-top:10px" onclick="addHomework()">Save homework</button><div id="hwMsg" class="msg"></div></div>`;
     }
-    h += tbl(['Class','Subject','Task','Due',''],DATA.homework.map((x,i)=>[esc(x.cls),esc(x.subject),esc(x.task),esc(x.due),editable?`<button class="btn danger sm" onclick="deleteHomework(${i})">Delete</button>`:'']));
+    const hwRows=USER.role==='Parent'?DATA.homework.map((x,i)=>({x,i})).filter(o=>visibleClassSet().has(String(o.x.cls||'').toLowerCase())):DATA.homework.map((x,i)=>({x,i}));
+    h += tbl(['Class','Subject','Task','Due',''],hwRows.map(({x,i})=>[esc(x.cls),esc(x.subject),esc(x.task),esc(x.due),editable?`<button class="btn danger sm" onclick="deleteHomework(${i})">Delete</button>`:'']));
     if(!editable) h += '<p class="muted">Homework is read-only. Only Teacher accounts can edit it.</p>';
     return '<div class="section">'+h+'</div>';
   },
@@ -2141,7 +2278,7 @@ const VIEWS = {
         <div class="muted">Excel columns: Student ID or Student Name, Class, Attendance %. You can also provide Present Days and Working Days; the portal will calculate the percentage.</div>
         <div class="upload-row"><input id="attendanceFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importStudentAttendance()">Upload attendance</button></div><div id="attendanceMsg" class="msg"></div></div>`;
     }
-    const rows = (USER.role==='Parent' ? DATA.students.filter(s=>s.name==='Aarav Mehta') : DATA.students).map(s=>[esc(s.studentCode||'—'),esc(s.name),esc(s.cls),esc(s.attendance)]);
+    const rows = visibleStudentsForUser().map(s=>[esc(s.studentCode||'—'),esc(s.name),esc(s.cls),esc(s.attendance)]);
     h+=tbl(['Student ID','Student','Class','Attendance this term'], rows);
     return '<div class="section">'+h+'</div>';
   },
@@ -2154,7 +2291,8 @@ const VIEWS = {
         <div class="form-grid" style="margin-top:8px"><div><label>Class</label><input id="smClass"></div><div><label>Subject</label><input id="smSubject"></div><div><label>Title</label><input id="smTitle"></div><div><label>File</label><input id="smFile" type="file"></div></div>
         <button class="btn" style="margin-top:10px" onclick="uploadStudyMaterial()">Upload Material</button><div id="smMsg" class="msg"></div></div>`;
     }
-    h+=tbl(['Class','Subject','Resource','File',''],DATA.studyMaterial.map((m,i)=>[
+    const smRows=USER.role==='Parent'?DATA.studyMaterial.map((m,i)=>({m,i})).filter(o=>visibleClassSet().has(String(o.m.cls||'').toLowerCase())):DATA.studyMaterial.map((m,i)=>({m,i}));
+    h+=tbl(['Class','Subject','Resource','File',''],smRows.map(({m,i})=>[
       esc(m.cls),esc(m.subject),esc(m.title),esc(m.fileName||'Demo / no attached file'),
       `${m.dataUrl?`<a class="btn ghost sm" href="${m.dataUrl}" download="${esc(m.fileName||m.title)}">Download</a>`:'<span class="muted">No file attached</span>'}${editable?` <button class="btn danger sm" onclick="deleteStudyMaterial(${i})">Delete</button>`:''}`
     ]));
@@ -2192,7 +2330,8 @@ const VIEWS = {
       h += `<div class="userRow"><strong>${esc(u.displayName)}</strong> <span class="tag neutral">${esc(u.role)}</span> <span style="color:var(--ink-soft);font-size:12px">@${esc(u.username)}</span>
         ${u.id!==USER.id?`<button class="btn danger sm" style="float:right" onclick="deleteUser(${u.id})">Remove</button>`:''}
         <div class="upload-row"><input id="resetPass${u.id}" type="password" placeholder="New password for this user"><button class="btn sm" onclick="adminResetPassword(${u.id})">Update Password</button></div>
-        <div class="chk-list">${ALL_MODULES.map(m=>`<label><input type="checkbox" ${u.access.includes(m)?'checked':''} ${lock?'disabled':''} onchange="toggleUserAccess(${u.id},'${m}',this.checked)"> ${MODULES[m]}</label>`).join('')}</div>
+        ${u.role==='Parent'?`<div style="margin:10px 0"><label style="font-size:12px;color:var(--ink-soft);font-weight:700">Linked student(s)</label><select multiple size="${Math.min(5,Math.max(2,DATA.students.length))}" style="width:100%;margin-top:5px" onchange="setParentLinks(${u.id},this)">${DATA.students.map(s=>`<option value="${s.id}" ${(u.linkedStudentIds||[]).includes(s.id)?'selected':''}>${esc(s.name)} — ${esc(s.cls)}</option>`).join('')}</select><div class="muted">Hold Ctrl/Cmd to select more than one child.</div></div>`:''}
+        <div class="chk-list">${ALL_MODULES.map(m=>`<label><input type="checkbox" ${u.access.includes(m)?'checked':''} ${(lock||m==='dashboard')?'disabled':''} onchange="toggleUserAccess(${u.id},'${m}',this.checked)"> ${MODULES[m]}</label>`).join('')}</div>
       </div>`;
     });
     return '<div class="section">'+h+'</div>';
@@ -2270,25 +2409,28 @@ function sendChatMessage(){
   const textVal=(input?.value||'').trim(), file=fileEl?.files?.[0];
   if(!textVal&&!file){if(msg){msg.className='msg err';msg.textContent='Write a message or attach an image.';}return;}
   if(file && !file.type.startsWith('image/')){msg.className='msg err';msg.textContent='Only image files can be shared.';return;}
-  if(file && file.size>1024*1024){msg.className='msg err';msg.textContent='For this standalone prototype, keep chat images under 1 MB.';return;}
+  if(file && file.size>768*1024){msg.className='msg err';msg.textContent='Keep chat images under 750 KB in this standalone prototype.';return;}
   const finish=(imageData='')=>{
-    DATA.chatMessages.push({id:Date.now(),fromId:USER.id,toId:CHAT_TARGET==='group'?'group':Number(CHAT_TARGET),text:textVal,imageData,createdAt:new Date().toLocaleString()});
-    saveData(); if(input) input.value=''; if(fileEl) fileEl.value=''; const fn=document.getElementById('chatFileName');if(fn)fn.textContent='';if(msg)msg.textContent='';renderChatThread();
+    const rec={id:Date.now()+Math.floor(Math.random()*1000),fromId:USER.id,toId:CHAT_TARGET==='group'?'group':Number(CHAT_TARGET),text:textVal,imageData,createdAt:new Date().toLocaleString('en-IN')};
+    DATA.chatMessages.push(rec);
+    if(!saveData()){DATA.chatMessages.pop();if(msg){msg.className='msg err';msg.textContent='Message could not be saved because browser storage is full.';}return;}
+    if(input) input.value=''; if(fileEl) fileEl.value=''; const fn=document.getElementById('chatFileName');if(fn)fn.textContent='';if(msg){msg.className='msg';msg.textContent='';}renderChatThread();
   };
-  if(file){const r=new FileReader();r.onload=()=>finish(r.result);r.readAsDataURL(file);}else finish();
+  if(file){const r=new FileReader();r.onload=()=>finish(r.result);r.onerror=()=>{if(msg){msg.className='msg err';msg.textContent='The selected image could not be read.';}};r.readAsDataURL(file);}else finish();
 }
 
 /* ---------------- Actions ---------------- */
 function addStudent(){
   if(!canEdit(['Admin','Accountant'])) return;
-  const studentCode=document.getElementById('sCode').value.trim()||('STU-'+String(Math.max(0,...DATA.students.map(s=>s.id))+1).padStart(3,'0'));
+  const studentCode=document.getElementById('sCode').value.trim()||('STU-'+String(Math.max(0,...DATA.students.map(s=>Number(s.id)||0))+1).padStart(3,'0'));
   const name=document.getElementById('sName').value.trim(); const cls=document.getElementById('sClass').value.trim();
   const guardian=document.getElementById('sGuardian').value.trim(); const guardianPhone=document.getElementById('sGuardianPhone').value.trim();
-  const fee=parseInt(document.getElementById('sFee').value)||0; const monthlyFee=parseInt(document.getElementById('sMonthlyFee').value)||0; const msg=document.getElementById('stuMsg');
+  const fee=Math.max(0,parseNumberCell(document.getElementById('sFee').value,0)); const monthlyFee=Math.max(0,parseNumberCell(document.getElementById('sMonthlyFee').value,0)); const msg=document.getElementById('stuMsg');
   if(!name||!cls){ msg.className='msg err'; msg.textContent='Name and class are required.'; return; }
-  const id=Math.max(0,...DATA.students.map(s=>s.id))+1;
+  if(DATA.students.some(s=>String(s.studentCode||'').toLowerCase()===studentCode.toLowerCase())){msg.className='msg err';msg.textContent='That Student ID already exists.';return;}
+  const id=Math.max(0,...DATA.students.map(s=>Number(s.id)||0))+1;
   DATA.students.push({id,studentCode,name,cls,guardian:guardian||'—',guardianPhone:guardianPhone||'—',feeDue:fee,monthlyFee,attendance:'—'});
-  if(fee>0) DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>l.id))+1,studentId:id,date:'Today',type:'Charge',amount:fee,note:'Opening balance'});
+  if(fee>0) DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:id,date:todayLabel(),type:'Charge',amount:fee,note:'Opening balance'});
   saveData(); renderView();
 }
 function importStudentsData(){
@@ -2301,10 +2443,16 @@ function importStudentsData(){
       const name=String(pick(row,['Student Name','Student','Name'])).trim(); const cls=String(pick(row,['Class','Class Section'])).trim(); if(!name||!cls) return;
       const guardian=String(pick(row,['Parent/Guardian','Guardian','Parent Name','Parent'])).trim()||'—';
       const guardianPhone=String(pick(row,['Parent Mobile','Guardian Mobile','Mobile','Phone'])).trim()||'—';
-      const monthlyFee=Number(pick(row,['Monthly Fee','MonthlyFee']))||0; const opening=Number(pick(row,['Opening Due','Opening Balance','Fee Due']))||0;
+      const monthlyRaw=pick(row,['Monthly Fee','MonthlyFee']); const openingRaw=pick(row,['Opening Due','Opening Balance','Fee Due']);
+      const monthlyFee=parseNumberCell(monthlyRaw,0); const opening=parseNumberCell(openingRaw,0);
       let st=(code?DATA.students.find(x=>String(x.studentCode).toLowerCase()===code.toLowerCase()):null) || DATA.students.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.cls.toLowerCase()===cls.toLowerCase());
       if(!st){ const id=Math.max(0,...DATA.students.map(x=>x.id))+1; st={id,studentCode:code||('STU-'+String(id).padStart(3,'0')),name,cls,guardian,guardianPhone,monthlyFee,feeDue:opening,attendance:'—'}; DATA.students.push(st); created++; }
-      else { st.studentCode=code||st.studentCode; st.name=name; st.cls=cls; st.guardian=guardian; st.guardianPhone=guardianPhone; if(monthlyFee) st.monthlyFee=monthlyFee; if(opening) st.feeDue=opening; updated++; }
+      else { st.studentCode=code||st.studentCode; st.name=name; st.cls=cls; st.guardian=guardian; st.guardianPhone=guardianPhone; if(monthlyRaw!=='') st.monthlyFee=monthlyFee; if(openingRaw!=='') st.feeDue=opening; updated++; }
+      if(openingRaw!==''){
+        const openingRec=DATA.feeLedger.find(l=>l.studentId===st.id&&l.note==='Imported opening balance');
+        if(opening>0){if(openingRec){openingRec.amount=opening;}else DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:st.id,date:'Import',type:'Charge',amount:opening,note:'Imported opening balance'});}
+        else if(openingRec) DATA.feeLedger=DATA.feeLedger.filter(l=>l!==openingRec);
+      }
       count++;
     });
     saveData(); const msg=document.getElementById('studentImportMsg'); msg.className='msg ok'; msg.textContent=`Loaded ${count} student/parent record(s): ${created} new, ${updated} updated.`; renderView();
@@ -2313,15 +2461,18 @@ function importStudentsData(){
 
 function saveTimetableRow(){
   const allowed=USER.role==='Admin'||USER.role==='Teacher'||(USER.role!=='Parent'&&USER.access.includes('timetable')); if(!allowed) return;
+  const cls=document.getElementById('ttClass').value.trim()||'General';
   const time=document.getElementById('ttTime').value.trim(), mon=document.getElementById('ttMon').value.trim(), tue=document.getElementById('ttTue').value.trim(), wed=document.getElementById('ttWed').value.trim(), thu=document.getElementById('ttThu').value.trim(), fri=document.getElementById('ttFri').value.trim();
   const msg=document.getElementById('ttMsg'); if(!time){msg.className='msg err';msg.textContent='Time is required.';return;}
-  const row=DATA.timetable.find(x=>x.time.toLowerCase()===time.toLowerCase()); if(row) Object.assign(row,{mon,tue,wed,thu,fri}); else DATA.timetable.push({time,mon,tue,wed,thu,fri}); saveData(); renderView();
+  const row=DATA.timetable.find(x=>String(x.cls||'General').toLowerCase()===cls.toLowerCase()&&String(x.time||'').toLowerCase()===time.toLowerCase());
+  if(row) Object.assign(row,{cls,time,mon,tue,wed,thu,fri}); else DATA.timetable.push({cls,time,mon,tue,wed,thu,fri});
+  saveData(); renderView();
 }
-function deleteTimetableRow(i){ const allowed=USER.role==='Admin'||USER.role==='Teacher'||(USER.role!=='Parent'&&USER.access.includes('timetable')); if(!allowed)return; DATA.timetable.splice(i,1);saveData();renderView(); }
+function deleteTimetableRow(i){ const allowed=USER.role==='Admin'||USER.role==='Teacher'||(USER.role!=='Parent'&&USER.access.includes('timetable')); if(!allowed)return; if(i<0||i>=DATA.timetable.length)return; DATA.timetable.splice(i,1);saveData();renderView(); }
 
 function addLibraryBookManual(){
   if(!canEdit(['Admin','Librarian'])) return;
-  const accessionNo=document.getElementById('libAccession').value.trim()||('LIB-'+String(DATA.library.length+1).padStart(4,'0'));
+  const accessionNo=document.getElementById('libAccession').value.trim()||nextAccessionNo();
   const title=document.getElementById('libTitle').value.trim(), author=document.getElementById('libAuthor').value.trim()||'—', category=document.getElementById('libCategory').value.trim()||'—', copies=Math.max(1,Number(document.getElementById('libCopies').value)||1); const msg=document.getElementById('libManualMsg');
   if(!title){msg.className='msg err';msg.textContent='Book title is required.';return;} if(DATA.library.some(b=>String(b.accessionNo).toLowerCase()===accessionNo.toLowerCase())){msg.className='msg err';msg.textContent='This Accession No already exists.';return;}
   DATA.library.push({accessionNo,title,author,category,totalCopies:copies,availableCopies:copies,issuedTo:'—',due:'Available'}); saveData(); renderView();
@@ -2329,18 +2480,22 @@ function addLibraryBookManual(){
 
 function importStudentAttendance(){
   if(!canEdit(['Admin','Teacher'])) return; const file=document.getElementById('attendanceFile').files[0];
-  readSheet(file,rows=>{let count=0,skipped=0; rows.forEach(row=>{
+  readSheet(file,rows=>{let count=0,skipped=0,invalid=0; rows.forEach(row=>{
     const code=String(pick(row,['Student ID','Student Code','Admission No'])).trim(); const name=String(pick(row,['Student Name','Student','Name'])).trim(); const cls=String(pick(row,['Class','Class Section'])).trim();
-    const st=(code?DATA.students.find(x=>String(x.studentCode).toLowerCase()===code.toLowerCase()):null)||DATA.students.find(x=>x.name.toLowerCase()===name.toLowerCase()&&(!cls||x.cls.toLowerCase()===cls.toLowerCase())); if(!st){skipped++;return;}
-    let att=pick(row,['Attendance %','Attendance','Percentage']); const present=Number(pick(row,['Present Days','Present'])), working=Number(pick(row,['Working Days','Total Days','Working']));
-    if((att===''||att===undefined)&&working>0) att=((present/working)*100).toFixed(1)+'%'; else if(att!==''&&!String(att).includes('%')) att=String(att)+'%'; st.attendance=String(att||'—'); count++;
-  }); saveData(); const msg=document.getElementById('attendanceMsg'); msg.className='msg ok'; msg.textContent=`Updated ${count} attendance record(s)${skipped?`; ${skipped} unmatched row(s)`:''}.`; renderView();},'attendanceMsg');
+    const st=(code?DATA.students.find(x=>String(x.studentCode).toLowerCase()===code.toLowerCase()):null)||DATA.students.find(x=>String(x.name).toLowerCase()===name.toLowerCase()&&(!cls||String(x.cls).toLowerCase()===cls.toLowerCase())); if(!st){skipped++;return;}
+    let att=pick(row,['Attendance %','Attendance','Percentage']); const present=parseNumberCell(pick(row,['Present Days','Present']),NaN), working=parseNumberCell(pick(row,['Working Days','Total Days','Working']),NaN);
+    let pct;
+    if((att===''||att===undefined) && Number.isFinite(working) && working>0 && Number.isFinite(present)) pct=(present/working)*100;
+    else pct=parseFloat(String(att??'').replace('%',''));
+    if(!Number.isFinite(pct)||pct<0||pct>100){invalid++;return;}
+    st.attendance=pct.toFixed(pct%1?1:0)+'%'; count++;
+  }); saveData(); const msg=document.getElementById('attendanceMsg'); msg.className=invalid?'msg warn':'msg ok'; msg.textContent=`Updated ${count} attendance record(s)${skipped?`; ${skipped} unmatched`:''}${invalid?`; ${invalid} invalid percentage row(s)`:''}.`; renderView();},'attendanceMsg');
 }
 
 function uploadStudyMaterial(){
   if(!canEdit(['Admin','Teacher'])) return; const cls=document.getElementById('smClass').value.trim(), subject=document.getElementById('smSubject').value.trim(), title=document.getElementById('smTitle').value.trim(), file=document.getElementById('smFile').files[0], msg=document.getElementById('smMsg');
   if(!cls||!subject||!title||!file){msg.className='msg err';msg.textContent='Class, subject, title and file are required.';return;} if(file.size>1572864){msg.className='msg err';msg.textContent='For this standalone demo, please keep the file at or below 1.5 MB.';return;}
-  const reader=new FileReader(); reader.onload=()=>{DATA.studyMaterial.unshift({id:Math.max(0,...DATA.studyMaterial.map(x=>x.id||0))+1,cls,subject,title,fileName:file.name,dataUrl:reader.result,uploadedBy:USER.displayName}); try{saveData();renderView();}catch(e){msg.className='msg err';msg.textContent='Browser storage is full. Use a smaller file.';}}; reader.readAsDataURL(file);
+  const reader=new FileReader(); reader.onload=()=>{const rec={id:Math.max(0,...DATA.studyMaterial.map(x=>x.id||0))+1,cls,subject,title,fileName:file.name,dataUrl:reader.result,uploadedBy:USER.displayName};DATA.studyMaterial.unshift(rec);if(!saveData()){DATA.studyMaterial.shift();msg.className='msg err';msg.textContent='Browser storage is full. Remove an old attachment or use a smaller file.';return;}renderView();};reader.onerror=()=>{msg.className='msg err';msg.textContent='The selected file could not be read.';};reader.readAsDataURL(file);
 }
 function deleteStudyMaterial(i){if(!canEdit(['Admin','Teacher']))return;DATA.studyMaterial.splice(i,1);saveData();renderView();}
 
@@ -2349,51 +2504,29 @@ function adminAddLeave(){
 }
 
 function addFeeEntry(){
-  const sid=parseInt(document.getElementById('fStudent').value);
-  const type=document.getElementById('fType').value;
-  const amount=parseInt(document.getElementById('fAmount').value)||0;
-  const note=document.getElementById('fNote').value.trim();
-  const msg=document.getElementById('feeMsg');
-  if(!amount){ msg.className='msg err'; msg.textContent='Enter an amount.'; return; }
+  if(!canEdit(['Admin','Accountant'])) return;
+  const sid=parseInt(document.getElementById('fStudent').value), type=document.getElementById('fType').value;
+  const amount=parseNumberCell(document.getElementById('fAmount').value,0), note=document.getElementById('fNote').value.trim(), msg=document.getElementById('feeMsg');
   const s=DATA.students.find(x=>x.id===sid);
-  s.feeDue = Math.max(0, s.feeDue + (type==='Charge'?amount:-amount));
-  DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>l.id))+1,studentId:sid,date:'Today',type,amount,note:note||(type==='Charge'?'Fee charge':'Fee payment')});
-  saveData(); msg.className='msg ok'; msg.textContent='Entry saved.'; renderView();
-}
-function markPaid(id){ const s = DATA.students.find(x=>x.id===id); if(s){ if(s.feeDue>0) DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>l.id))+1,studentId:id,date:'Today',type:'Payment',amount:s.feeDue,note:'Full settlement'}); s.feeDue=0; saveData(); renderView(); } }
-function updateSalary(){
-  const i=parseInt(document.getElementById('salStaff').value);
-  const status=document.getElementById('salStatus').value.trim();
-  if(!status) return;
-  DATA.salary[i].paid=status; saveData(); renderView();
-}
-function addLeave(){
-  if(USER.role!=='Admin') return;
-  const name=document.getElementById('lvName').value.trim(), type=document.getElementById('lvType').value.trim(),
-    dates=document.getElementById('lvDates').value.trim(), status=document.getElementById('lvStatus').value;
-  if(!name||!type||!dates) return;
-  DATA.leaves.push({id:Math.max(0,...DATA.leaves.map(l=>l.id))+1,name,type,dates,status});
+  if(!s){msg.className='msg err';msg.textContent='Select a valid student.';return;}
+  if(!(amount>0)){msg.className='msg err';msg.textContent='Enter an amount greater than zero.';return;}
+  if(type==='Payment' && amount>(Number(s.feeDue)||0)){msg.className='msg err';msg.textContent='Payment cannot exceed the current amount due.';return;}
+  s.feeDue=Math.max(0,(Number(s.feeDue)||0)+(type==='Charge'?amount:-amount));
+  DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:sid,date:todayLabel(),type,amount,note:note||(type==='Charge'?'Fee charge':'Fee payment')});
   saveData(); renderView();
 }
-function applyLeave(){
-  const type=document.getElementById('myLvType').value.trim(), dates=document.getElementById('myLvDates').value.trim();
-  const msg=document.getElementById('myLvMsg');
-  if(!type||!dates){ msg.className='msg err'; msg.textContent='Fill in both fields.'; return; }
-  DATA.leaves.push({id:Math.max(0,...DATA.leaves.map(l=>l.id))+1,name:USER.displayName,type,dates,status:'Pending'});
-  saveData(); msg.className='msg ok'; msg.textContent='Leave request submitted.'; renderView();
-}
-function addReportCard(){
-  if(!canEdit(['Admin','Teacher'])) return;
-  const sid=parseInt(document.getElementById('rStudent').value), term=document.getElementById('rTerm').value.trim(), result=document.getElementById('rResult').value.trim();
-  if(!term||!result) return;
-  DATA.reportcards.push({id:Math.max(0,...DATA.reportcards.map(r=>r.id))+1,studentId:sid,term,result});
-  saveData(); renderView();
+function markPaid(id){
+  if(!canEdit(['Admin','Accountant'])) return;
+  const s=DATA.students.find(x=>x.id===id); if(!s)return;
+  const due=Number(s.feeDue)||0; if(due<=0)return;
+  DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:id,date:todayLabel(),type:'Payment',amount:due,note:'Full settlement'});
+  s.feeDue=0; saveData(); renderView();
 }
 function addNotice(){
   if(USER.role!=='Admin') return;
   const t=document.getElementById('nTitle').value.trim(), b=document.getElementById('nBody').value.trim();
   if(!t) return;
-  DATA.notices.unshift({title:t, body:b||'—', date:'Today'});
+  DATA.notices.unshift({title:t, body:b||'—', date:todayLabel()});
   saveData(); renderView();
 }
 function addHomework(){
@@ -2422,21 +2555,20 @@ function importReportCards(){
   if(!canEdit(['Admin','Teacher'])) return;
   const file=document.getElementById('reportFile').files[0];
   readSheet(file,rows=>{
-    let count=0, skipped=0;
+    let created=0,updated=0,skipped=0;
     rows.forEach(row=>{
-      const name=String(pick(row,['Student Name','Student','Name'])).trim();
-      const cls=String(pick(row,['Class','Class Section'])).trim();
-      const term=String(pick(row,['Term','Exam','Assessment'])).trim();
-      const subject=String(pick(row,['Subject'])).trim();
-      const marks=pick(row,['Marks Obtained','Obtained Marks','Marks']);
-      const max=pick(row,['Max Marks','Maximum Marks','Total Marks']);
-      const grade=String(pick(row,['Grade'])).trim();
-      const remarks=String(pick(row,['Remarks','Remark'])).trim();
-      const st=DATA.students.find(x=>x.name.toLowerCase()===name.toLowerCase() && (!cls||x.cls.toLowerCase()===cls.toLowerCase()));
-      if(!st||!term){ skipped++; return; }
-      DATA.reportcards.push({id:Math.max(0,...DATA.reportcards.map(r=>r.id))+1,studentId:st.id,term,subject:subject||'Overall',marksObtained:marks,maxMarks:max,grade:grade||'—',remarks,result:remarks||''}); count++;
+      const code=String(pick(row,['Student ID','Student Code','Admission No'])).trim();
+      const name=String(pick(row,['Student Name','Student','Name'])).trim(); const cls=String(pick(row,['Class','Class Section'])).trim();
+      const term=String(pick(row,['Term','Exam','Assessment'])).trim(); const subject=String(pick(row,['Subject'])).trim()||'Overall';
+      const marks=pick(row,['Marks Obtained','Obtained Marks','Marks']); const max=pick(row,['Max Marks','Maximum Marks','Total Marks']);
+      const grade=String(pick(row,['Grade'])).trim(); const remarks=String(pick(row,['Remarks','Remark'])).trim();
+      const st=(code?DATA.students.find(x=>String(x.studentCode||'').toLowerCase()===code.toLowerCase()):null)||DATA.students.find(x=>String(x.name).toLowerCase()===name.toLowerCase()&&(!cls||String(x.cls).toLowerCase()===cls.toLowerCase()));
+      if(!st||!term){skipped++;return;}
+      let rec=DATA.reportcards.find(r=>Number(r.studentId)===st.id&&String(r.term).toLowerCase()===term.toLowerCase()&&String(r.subject||'Overall').toLowerCase()===subject.toLowerCase());
+      const payload={studentId:st.id,term,subject,marksObtained:marks,maxMarks:max,grade:grade||'—',remarks,result:remarks||''};
+      if(rec){Object.assign(rec,payload);updated++;}else{DATA.reportcards.push({id:Math.max(0,...DATA.reportcards.map(r=>Number(r.id)||0))+1,...payload});created++;}
     });
-    saveData(); const msg=document.getElementById('reportMsg'); msg.className='msg ok'; msg.textContent=`Imported ${count} mark row(s)${skipped?`; skipped ${skipped}`:''}.`; renderView();
+    saveData(); const msg=document.getElementById('reportMsg'); msg.className='msg ok'; msg.textContent=`Marks processed: ${created} new, ${updated} updated${skipped?`, ${skipped} skipped`:''}.`; renderView();
   },'reportMsg');
 }
 
@@ -2449,12 +2581,13 @@ function importFeeData(){
       const name=String(pick(row,['Student Name','Student','Name'])).trim(), cls=String(pick(row,['Class','Class Section'])).trim();
       if(!name||!cls) return;
       const guardian=String(pick(row,['Parent/Guardian','Guardian','Parent Name','Parent'])).trim()||'—';
-      const monthlyFee=Number(pick(row,['Monthly Fee','MonthlyFee','Fee']))||0;
-      const opening=Number(pick(row,['Opening Due','Opening Balance','Fee Due','Pending Fee']))||0;
+      const monthlyFee=parseNumberCell(pick(row,['Monthly Fee','MonthlyFee','Fee']),0);
+      const opening=parseNumberCell(pick(row,['Opening Due','Opening Balance','Fee Due','Pending Fee']),0);
       let st=DATA.students.find(x=>x.name.toLowerCase()===name.toLowerCase() && x.cls.toLowerCase()===cls.toLowerCase());
-      if(!st){ st={id:Math.max(0,...DATA.students.map(x=>x.id))+1,name,cls,guardian,monthlyFee,feeDue:opening,attendance:'—'}; DATA.students.push(st); }
+      if(!st){ const id=Math.max(0,...DATA.students.map(x=>Number(x.id)||0))+1; st={id,studentCode:'STU-'+String(id).padStart(3,'0'),name,cls,guardian,guardianPhone:'—',monthlyFee,feeDue:opening,attendance:'—'}; DATA.students.push(st); }
       else { st.guardian=guardian; st.monthlyFee=monthlyFee; st.feeDue=opening; }
-      if(opening>0) DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>l.id))+1,studentId:st.id,date:'Import',type:'Charge',amount:opening,note:'Imported opening balance'});
+      const existingOpening=DATA.feeLedger.find(l=>l.studentId===st.id&&l.note==='Imported opening balance');
+      if(opening>0){if(existingOpening){existingOpening.amount=opening;existingOpening.date='Import';}else DATA.feeLedger.push({id:Math.max(0,...DATA.feeLedger.map(l=>Number(l.id)||0))+1,studentId:st.id,date:'Import',type:'Charge',amount:opening,note:'Imported opening balance'});}else if(existingOpening){DATA.feeLedger=DATA.feeLedger.filter(l=>l!==existingOpening);}
       count++;
     });
     DATA.feeMeta.lastProcessedMonth=monthKey(); saveData(); const msg=document.getElementById('feeImportMsg'); msg.className='msg ok'; msg.textContent=`Imported/updated ${count} student fee record(s). Monthly cycle starts next month.`; renderView();
@@ -2473,8 +2606,9 @@ function importSalaryData(){
       const present=pick(row,['Present Days','Present']); const leave=pick(row,['Leave Days','Leave']);
       const month=String(pick(row,['Month'])).trim(); const status=String(pick(row,['Payment Status','Status','Paid'])).trim();
       let rec=DATA.salary.find(x=>x.name.toLowerCase()===name.toLowerCase());
-      if(!rec){ rec={name,role,monthly:'₹'+Number(monthly||0).toLocaleString('en-IN'),paid:'Pending',presentDays:present||'—',leaveDays:leave||'—'}; DATA.salary.push(rec); }
-      rec.role=role; if(monthly!=='') rec.monthly=String(monthly).includes('₹')?String(monthly):'₹'+Number(monthly).toLocaleString('en-IN'); rec.presentDays=present===''?'—':present; rec.leaveDays=leave===''?'—':leave; rec.paid=(month?month+' — ':'')+(status||'Pending'); count++;
+      const monthlyNum=parseNumberCell(monthly,0);
+      if(!rec){ rec={name,role,monthly:'₹'+monthlyNum.toLocaleString('en-IN'),paid:'Pending',presentDays:present||'—',leaveDays:leave||'—'}; DATA.salary.push(rec); }
+      rec.role=role; if(monthly!=='') rec.monthly='₹'+monthlyNum.toLocaleString('en-IN'); rec.presentDays=present===''?'—':present; rec.leaveDays=leave===''?'—':leave; rec.paid=(month?month+' — ':'')+(status||'Pending'); count++;
     });
     saveData(); const msg=document.getElementById('salaryMsg'); msg.className='msg ok'; msg.textContent=`Imported/updated ${count} salary record(s).`; renderView();
   },'salaryMsg');
@@ -2485,8 +2619,8 @@ function importLibraryBooks(){
   const file=document.getElementById('libFile').files[0];
   readSheet(file,rows=>{let count=0; rows.forEach(row=>{
     const title=String(pick(row,['Title','Book Title','Book Name'])).trim(); if(!title)return;
-    const accessionNo=String(pick(row,['Accession No','Accession Number','Book ID','Book Code'])).trim()||('LIB-'+String(DATA.library.length+1).padStart(4,'0'));
-    const author=String(pick(row,['Author','Writer'])).trim()||'—', category=String(pick(row,['Category','Subject','Book Category'])).trim()||'—', copies=Math.max(1,Number(pick(row,['Total Copies','Copies','Quantity']))||1);
+    const accessionNo=String(pick(row,['Accession No','Accession Number','Book ID','Book Code'])).trim()||nextAccessionNo();
+    const author=String(pick(row,['Author','Writer'])).trim()||'—', category=String(pick(row,['Category','Subject','Book Category'])).trim()||'—', copies=Math.max(1,Math.floor(parseNumberCell(pick(row,['Total Copies','Copies','Quantity']),1)));
     const existing=DATA.library.find(b=>String(b.accessionNo).toLowerCase()===accessionNo.toLowerCase());
     if(existing){const issued=Math.max(0,(Number(existing.totalCopies)||1)-(Number(existing.availableCopies)||0));existing.title=title;existing.author=author;existing.category=category;existing.totalCopies=Math.max(copies,issued);existing.availableCopies=Math.max(0,existing.totalCopies-issued);} else DATA.library.push({accessionNo,title,author,category,totalCopies:copies,availableCopies:copies,issuedTo:'—',due:'Available'}); count++;
   }); saveData(); const msg=document.getElementById('libMsg'); msg.className='msg ok'; msg.textContent=`Imported/updated ${count} inventory record(s).`; renderView();},'libMsg');
@@ -2501,7 +2635,7 @@ function returnLibraryBook(txId){
 
 async function syncTeacherBiometric(){
   if(USER.role!=='Admin')return; const url=document.getElementById('teacherBioUrl').value.trim(),msg=document.getElementById('teacherBioMsg');if(!url){msg.className='msg err';msg.textContent='Enter the biometric API URL.';return;}DATA.biometric.apiUrl=url;saveData();msg.className='msg';msg.textContent='Fetching…';
-  try{const res=await fetch(url,{headers:{'Accept':'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);const json=await res.json();const rows=Array.isArray(json)?json:(json.data||json.logs||json.attendance||[]);DATA.staffLog=rows.map(x=>({name:x.name||x.employeeName||x.employee||'Unknown',role:x.role||x.designation||'Staff',in:x.in||x.checkIn||x.checkin||'—',out:x.out||x.checkOut||x.checkout||'—',status:x.status||x.attendanceStatus||(x.officialLeave===true?'Official Leave':'')}));
+  try{const res=await fetch(url,{headers:{'Accept':'application/json'}});if(!res.ok)throw new Error('HTTP '+res.status);const json=await res.json();const candidate=Array.isArray(json)?json:(json.data||json.logs||json.attendance||[]);const rows=Array.isArray(candidate)?candidate:[];if(!rows.length)throw new Error('API returned no attendance records');DATA.staffLog=rows.map(x=>({name:x.name||x.employeeName||x.employee||'Unknown',role:x.role||x.designation||'Staff',in:x.in||x.checkIn||x.checkin||'—',out:x.out||x.checkOut||x.checkout||'—',status:x.status||x.attendanceStatus||(x.officialLeave===true?'Official Leave':'')}));
     DATA.teachers.forEach(t=>{const r=DATA.staffLog.find(x=>x.name.toLowerCase()===t.name.toLowerCase());if(r){t.biometricIn=r.in;t.biometricOut=r.out;t.status=r.status||(r.in&&r.in!=='—'?'In Office':'No Punch / Status not provided');}});saveData();msg.className='msg ok';msg.textContent=`Fetched ${rows.length} biometric record(s) and updated matching teachers.`;renderView();
   }catch(err){msg.className='msg err';msg.textContent='Biometric sync failed: '+err.message+'. Check API/CORS/network settings.';}
 }
@@ -2512,7 +2646,7 @@ async function syncBiometric(){
   if(!url){ msg.className='msg err'; msg.textContent='Enter the biometric API URL.'; return; }
   DATA.biometric.apiUrl=url; saveData(); msg.className='msg'; msg.textContent='Fetching…';
   try{
-    const res=await fetch(url,{headers:{'Accept':'application/json'}}); if(!res.ok) throw new Error('HTTP '+res.status); const json=await res.json(); const rows=Array.isArray(json)?json:(json.data||json.logs||[]);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}}); if(!res.ok) throw new Error('HTTP '+res.status); const json=await res.json(); const candidate=Array.isArray(json)?json:(json.data||json.logs||[]); const rows=Array.isArray(candidate)?candidate:[]; if(!rows.length) throw new Error('API returned no biometric records');
     DATA.staffLog=rows.map(x=>({name:x.name||x.employeeName||x.employee||'Unknown',role:x.role||x.designation||'Staff',in:x.in||x.checkIn||x.checkin||'—',out:x.out||x.checkOut||x.checkout||'—',status:x.status||x.attendanceStatus||(x.officialLeave===true?'Official Leave':'')}));
     saveData(); msg.className='msg ok'; msg.textContent=`Fetched ${DATA.staffLog.length} biometric log(s).`; renderView();
   }catch(err){ msg.className='msg err'; msg.textContent='Biometric sync failed: '+err.message+'. Check API/CORS/network settings.'; }
@@ -2538,6 +2672,12 @@ function prefillAccess(){
   const role = roleEl.value;
   list.innerHTML = ALL_MODULES.map(m=>`<label><input type="checkbox" value="${m}" ${DEFAULT_ACCESS[role].includes(m)?'checked':''}> ${MODULES[m]}</label>`).join('');
 }
+function setParentLinks(userId,selectEl){
+  if(USER.role!=='Admin') return;
+  const u=DATA.users.find(x=>x.id===Number(userId)); if(!u||u.role!=='Parent'||!selectEl)return;
+  u.linkedStudentIds=Array.from(selectEl.selectedOptions).map(o=>Number(o.value)).filter(Number.isFinite);
+  saveData();
+}
 function addUser(){
   if(USER.role!=='Admin') return;
   const name=document.getElementById('uName').value.trim();
@@ -2546,10 +2686,11 @@ function addUser(){
   const role=document.getElementById('uRole').value;
   const msg=document.getElementById('userMsg');
   if(!name || !uname || !pass){ msg.className='msg err'; msg.textContent='Please fill in all fields.'; return; }
+  if(pass.length<4){msg.className='msg err';msg.textContent='Password must be at least 4 characters.';return;}
   if(DATA.users.some(u=>u.username.toLowerCase()===uname.toLowerCase())){ msg.className='msg err'; msg.textContent='That username is already taken.'; return; }
-  const access = Array.from(document.querySelectorAll('#newAccessList input:checked')).map(c=>c.value);
-  const id = Math.max(...DATA.users.map(u=>u.id))+1;
-  DATA.users.push({id,username:uname,password:pass,displayName:name,role,access});
+  const access=[...new Set(['dashboard',...Array.from(document.querySelectorAll('#newAccessList input:checked')).map(c=>c.value)])];
+  const id=Math.max(0,...DATA.users.map(u=>Number(u.id)||0))+1;
+  DATA.users.push({id,username:uname,password:pass,displayName:name,role,linkedStudentIds:role==='Parent'?[]:undefined,access});
   saveData();
   msg.className='msg ok'; msg.textContent='User created.';
   document.getElementById('uName').value=document.getElementById('uUser').value=document.getElementById('uPass').value='';
@@ -2557,6 +2698,7 @@ function addUser(){
 }
 function toggleUserAccess(userId, key, checked){
   if(USER.role!=='Admin') return;
+  if(key==='dashboard') return;
   const u = DATA.users.find(x=>x.id===userId); if(!u) return;
   if(checked && !u.access.includes(key)) u.access.push(key);
   if(!checked) u.access = u.access.filter(k=>k!==key);
@@ -2573,35 +2715,28 @@ function deleteUser(id){
 
 /* ---------------- Printing ---------------- */
 function doPrint(html){
-  document.getElementById('printArea').innerHTML = html;
-  document.body.classList.add('printing');
-  window.print();
+  const area=document.getElementById('printArea'); if(!area||!html)return;
+  area.innerHTML=html; document.body.classList.add('printing');
+  try{window.print();}finally{setTimeout(()=>document.body.classList.remove('printing'),1200);}
 }
-window.onafterprint = ()=>{ document.body.classList.remove('printing'); };
+window.onafterprint=()=>{document.body.classList.remove('printing');};
 function printFeeSlip(studentId){
-  const s = DATA.students.find(x=>x.id===studentId);
-  const rows = DATA.feeLedger.filter(l=>l.studentId===studentId);
-  const html = `<div class="slip">
-    <h2>Vidyalaya School — Fee Slip</h2>
-    <p><b>Student:</b> ${esc(s.name)} &nbsp; <b>Class:</b> ${esc(s.cls)} &nbsp; <b>Parent/Guardian:</b> ${esc(s.guardian)}</p>
-    <table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody>
-      ${rows.length? rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.note)}</td><td>${esc(r.type)}</td><td>₹${r.amount}</td></tr>`).join('') : '<tr><td colspan="4">No ledger entries yet.</td></tr>'}
-    </tbody></table>
-    <p class="total">Current balance due: ₹${s.feeDue}</p>
-    <p style="margin-top:30px;font-size:13px;color:#555">Generated ${new Date().toLocaleDateString()} · Vidyalaya School Management Portal</p>
-  </div>`;
+  const s=DATA.students.find(x=>x.id===Number(studentId));
+  if(!s||!canViewStudent(s.id)){alert('You do not have access to this fee record.');return;}
+  const rows=DATA.feeLedger.filter(l=>l.studentId===s.id);
+  const html=`<div class="slip"><h2>Vidyalaya School — Fee Slip</h2><p><b>Student:</b> ${esc(s.name)} &nbsp; <b>Class:</b> ${esc(s.cls)} &nbsp; <b>Parent/Guardian:</b> ${esc(s.guardian)}</p><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.note)}</td><td>${esc(r.type)}</td><td>₹${Number(r.amount||0).toLocaleString('en-IN')}</td></tr>`).join(''):'<tr><td colspan="4">No ledger entries yet.</td></tr>'}</tbody></table><p class="total">Current balance due: ₹${Number(s.feeDue||0).toLocaleString('en-IN')}</p><p style="margin-top:30px;font-size:13px;color:#555">Generated ${todayLabel()} · Vidyalaya School Management Portal</p></div>`;
   doPrint(html);
 }
 function printLibrarySlip(txId){
-  const tx=DATA.libraryTransactions.find(x=>x.id===txId); if(!tx)return; const s=DATA.students.find(x=>x.id===tx.studentId);
+  const tx=DATA.libraryTransactions.find(x=>x.id===txId); if(!tx)return; if(USER.role==='Parent'&&!canViewStudent(tx.studentId)){alert('You do not have access to this library transaction.');return;} const s=DATA.students.find(x=>x.id===tx.studentId);
   const html=`<div class="slip"><h2>Vidyalaya School — Library ${tx.status==='Returned'?'Return':'Issue'} Slip</h2>
     <p><b>Transaction:</b> #${esc(tx.id)} &nbsp; <b>Status:</b> ${esc(tx.status)}</p>
     <table><tbody><tr><th>Student</th><td>${esc(tx.studentName||'—')}</td></tr><tr><th>Class</th><td>${esc(tx.studentClass||(s?s.cls:'—'))}</td></tr><tr><th>Book</th><td>${esc(tx.title)}</td></tr><tr><th>Accession No</th><td>${esc(tx.accessionNo)}</td></tr><tr><th>Issue Date</th><td>${esc(tx.issueDate)}</td></tr><tr><th>Due Date</th><td>${esc(tx.dueDate)}</td></tr><tr><th>Return Date</th><td>${esc(tx.returnDate||'—')}</td></tr></tbody></table>
     <p style="margin-top:30px;font-size:13px;color:#555">Generated ${new Date().toLocaleDateString()} · Vidyalaya School Library</p></div>`; doPrint(html);
 }
 function printReportCard(id){
-  const r = DATA.reportcards.find(x=>x.id===id);
-  const s = DATA.students.find(x=>x.id===r.studentId);
+  const r=DATA.reportcards.find(x=>x.id===id); if(!r)return; if(USER.role==='Parent'&&!canViewStudent(r.studentId)){alert('You do not have access to this report card.');return;}
+  const s=DATA.students.find(x=>x.id===r.studentId);
   const same = DATA.reportcards.filter(x=>x.studentId===r.studentId && x.term===r.term);
   const detailed = same.some(x=>x.subject || x.marksObtained!==undefined);
   const rows = detailed ? same.map(x=>`<tr><td>${esc(x.subject||'Overall')}</td><td>${esc(x.marksObtained??'—')}</td><td>${esc(x.maxMarks??'—')}</td><td>${esc(x.grade||'—')}</td><td>${esc(x.remarks||x.result||'—')}</td></tr>`).join('') : `<tr><td colspan="5">${esc(r.result||'—')}</td></tr>`;
