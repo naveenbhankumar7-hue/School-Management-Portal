@@ -65,7 +65,7 @@ th{color:var(--ink-soft);font-weight:700;font-size:12px;letter-spacing:.04em;tex
 .tag.warn{background:rgba(181,106,45,.12);color:var(--warn)}
 .tag.neutral{background:rgba(102,112,133,.12);color:var(--ink-soft)}
 .card{
-  background:linear-gradient(180deg,var(--panel) 0%,var(--panel-soft) 100%);
+  background:linear-gradient(180deg,rgba(255,251,246,.98) 0%,rgba(255,246,230,.95) 100%);
   border:1px solid var(--line);
   border-radius:18px;
   padding:18px 20px;
@@ -546,7 +546,7 @@ input:focus,select:focus,textarea:focus{
 #logout{margin-top:20px;font-size:13px;color:#d6deee;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 14px;width:100%;text-decoration:none}
 main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#fff8ed 0%,var(--paper) 100%)}
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}
-.topbar .theme-toggle{font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--ink-soft);font-weight:700;box-shadow:var(--shadow-soft)}
+.topbar .theme-toggle{font-size:13px;background:linear-gradient(180deg,rgba(255,250,244,.98) 0%,rgba(255,244,223,.96) 100%);border:1px solid rgba(255,192,103,.30);border-radius:14px;padding:10px 14px;color:#6e7790;font-weight:700;box-shadow:0 10px 22px rgba(143,96,27,.08)}
 .page-head small{display:block;color:var(--ink-soft);font-size:13px;margin-top:2px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px}
 .stat .num{font-size:30px;font-weight:800;line-height:1;color:var(--navy-deep)}
@@ -598,30 +598,121 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
 
 .home-hero{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,.7fr);gap:16px;margin-bottom:18px}
 .home-hero-card{
-  padding:28px;
-  border-radius:22px;
-  color:#fff;
-  background:linear-gradient(135deg,#274d87 0%,#6a4d79 100%);
-  box-shadow:0 22px 46px rgba(39,77,135,.22)
+  padding:30px;
+  border-radius:28px;
+  color:var(--ink);
+  background:linear-gradient(180deg, rgba(255,250,244,.98) 0%, rgba(255,244,223,.96) 100%);
+  border:1px solid rgba(255,192,103,.32);
+  box-shadow:0 20px 42px rgba(143,96,27,.10)
 }
-.home-hero-card h3{font-size:34px;line-height:1.15;color:#fff;margin:6px 0 10px}
-.home-hero-card p{margin:0 0 16px;color:rgba(255,255,255,.88);font-size:15px;line-height:1.7;max-width:720px}
-.eyebrow{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.18);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.home-hero-card h3{font-size:34px;line-height:1.15;color:#20355c;margin:8px 0 10px}
+.home-hero-card p{margin:0 0 16px;color:#5f6c82;font-size:15px;line-height:1.75;max-width:720px}
+.eyebrow{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:rgba(255,192,103,.22);color:#8a5c1a;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .hero-badges{display:flex;gap:10px;flex-wrap:wrap}
-.hero-badges .chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.14);color:#fff}
-.home-side-stat{display:flex;flex-direction:column;justify-content:center;min-height:100%}
-.home-side-stat .small{font-size:12px;color:var(--ink-soft);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.home-side-stat .big{font-size:52px;font-weight:800;color:var(--navy-deep);line-height:1;margin:10px 0 6px}
-.home-side-stat .sub{font-size:14px;color:var(--ink-soft);line-height:1.6}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(46,91,150,.08);color:var(--navy-deep);font-size:12px;font-weight:700}
+.hero-badges .chip{background:rgba(255,255,255,.82);border:1px solid rgba(255,192,103,.24);color:#274f87}
+.home-side-stat{display:flex;flex-direction:column;justify-content:center;min-height:100%;background:linear-gradient(180deg, rgba(255,250,244,.98) 0%, rgba(255,244,223,.96) 100%);border:1px solid rgba(255,192,103,.28);box-shadow:0 18px 38px rgba(143,96,27,.08)}
+.home-side-stat .small{font-size:12px;color:#7b6f59;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.home-side-stat .big{font-size:52px;font-weight:800;color:#274f87;line-height:1;margin:10px 0 6px}
+.home-side-stat .sub{font-size:14px;color:#5f6c82;line-height:1.6}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.82);border:1px solid rgba(255,192,103,.22);color:#274f87;font-size:12px;font-weight:700}
 .notice-list{display:grid;gap:12px}
-.notice-card strong{display:block;font-size:16px;margin-bottom:2px}
-.notice-card p{margin:8px 0 0;line-height:1.6;color:var(--ink-soft)}
+.notice-card strong{display:block;font-size:16px;margin-bottom:2px;color:#20355c}
+.notice-card p{margin:8px 0 0;line-height:1.6;color:#5f6c82}
 .quick-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
-.quick-card{padding:18px 16px}
-.quick-card .title{font-size:13px;color:var(--ink-soft);margin-bottom:8px}
-.quick-card .value{font-size:26px;font-weight:800;color:var(--navy-deep)}
-.quick-card .caption{font-size:12px;color:var(--ink-soft);margin-top:6px}
+.quick-card{padding:18px 16px;background:linear-gradient(180deg, rgba(255,250,244,.98) 0%, rgba(255,244,223,.96) 100%);border:1px solid rgba(255,192,103,.26);box-shadow:0 16px 36px rgba(143,96,27,.08)}
+.quick-card .title{font-size:13px;color:#7b6f59;margin-bottom:8px}
+.quick-card .value{font-size:26px;font-weight:800;color:#274f87}
+.quick-card .caption{font-size:12px;color:#5f6c82;margin-top:6px}
+
+
+/* ---- ERP workspace hub ---- */
+#app{grid-template-columns:230px 1fr}
+#sidebar{background:linear-gradient(180deg,#12264a 0%,#0c1d38 100%);padding:18px 14px;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+.sidebar-panel{background:transparent;border:none;border-radius:0;padding:8px 6px 15px;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,.10)}
+.sidebar-panel h3{font-family:Inter,system-ui,sans-serif;font-size:18px;line-height:1.1;margin-bottom:5px}
+.sidebar-panel p{font-size:11px;color:#9fb0c9;line-height:1.45}
+#sidebar .brand{font-size:11px;color:#ffc067;margin-bottom:5px}
+#sidebar .who{margin:12px 6px 16px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);font-size:12px;color:#d9e4f5}
+.navitem{padding:11px 12px;border-radius:9px;font-size:14px;margin-bottom:5px}
+.navitem.active{background:rgba(50,91,177,.28);color:#fff;border-left:3px solid #ffc067;box-shadow:none}
+.navitem .nav-icon{width:22px;text-align:center;font-size:15px}
+#logout{margin-top:18px;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
+main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
+
+.modules-toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:15px}
+.module-search{position:relative;max-width:440px;flex:1;min-width:260px}
+.module-search input{width:100%;padding:12px 14px 12px 40px;background:rgba(255,255,255,.92);border-color:rgba(255,192,103,.30);box-shadow:0 8px 22px rgba(143,96,27,.06)}
+.module-search::before{content:'⌕';position:absolute;left:14px;top:50%;transform:translateY(-52%);font-size:20px;color:#8b6a38;z-index:2}
+.module-filters{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px}
+.module-filter{border:1px solid rgba(255,192,103,.28);background:rgba(255,255,255,.82);color:#56647b;padding:8px 13px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:none}
+.module-filter.active{background:#274f87;color:#fff;border-color:#274f87}
+.module-section{margin:20px 0 28px}
+.module-section-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#705b36;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.module-card{position:relative;min-height:122px;padding:17px;border:1px solid rgba(255,192,103,.27);border-radius:16px;background:linear-gradient(180deg,rgba(255,253,249,.98),rgba(255,247,234,.96));box-shadow:0 10px 25px rgba(143,96,27,.08);cursor:pointer;transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease}
+.module-card:hover{transform:translateY(-3px);box-shadow:0 18px 36px rgba(143,96,27,.14);border-color:rgba(255,168,45,.48)}
+.module-card-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#fff0d5,#ffd08a);font-size:21px;margin-bottom:13px}
+.module-card strong{display:block;color:#20355c;font-size:15px;margin-bottom:4px}
+.module-card small{display:block;color:#7a756c;font-size:11px;line-height:1.45}
+.module-card .live-pill{position:absolute;right:12px;top:12px;background:#fff0e5;color:#c16a20;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:800;text-transform:uppercase}
+.modules-empty{padding:28px;text-align:center;border:1px dashed rgba(255,192,103,.45);border-radius:16px;color:#7a756c;background:rgba(255,255,255,.55)}
+
+.workspace-footer{margin-top:28px;padding:17px 20px;border-radius:18px;background:#0d1d37;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;box-shadow:0 15px 34px rgba(13,29,55,.18)}
+.workspace-footer strong{display:block;font-size:13px}.workspace-footer small{display:block;color:#91a3c0;font-size:10px;margin-top:3px}.workspace-footer-links{display:flex;gap:12px;flex-wrap:wrap}.workspace-footer-links button{background:none;border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 2px}
+
+/* ---- Team Chat ---- */
+.chat-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:14px;min-height:560px}
+.chat-contacts,.chat-panel{background:linear-gradient(180deg,rgba(255,252,246,.98),rgba(255,244,226,.96));border:1px solid rgba(255,192,103,.28);border-radius:20px;box-shadow:0 14px 32px rgba(143,96,27,.08)}
+.chat-contacts{padding:15px}
+.chat-contacts h3{font-family:Inter,system-ui,sans-serif;font-size:15px;margin-bottom:4px}
+.chat-contacts p{font-size:11px;color:#7b756b;margin:0 0 13px;line-height:1.5}
+.chat-user-list{display:grid;gap:7px;max-height:460px;overflow:auto}
+.chat-user-btn{width:100%;display:flex;align-items:center;gap:10px;border:none;background:rgba(255,255,255,.72);padding:10px;border-radius:12px;text-align:left;color:#33445f;box-shadow:none}
+.chat-user-btn:hover,.chat-user-btn.active{background:#fff;border:1px solid rgba(255,192,103,.35)}
+.chat-avatar{width:35px;height:35px;border-radius:11px;display:grid;place-items:center;background:#274f87;color:#fff;font-weight:800;font-size:12px;flex:0 0 auto}
+.chat-user-meta strong{display:block;font-size:12px}
+.chat-user-meta small{display:block;font-size:10px;color:#8b8a86;margin-top:2px}
+.chat-panel{display:flex;flex-direction:column;overflow:hidden}
+.chat-header{padding:15px 18px;border-bottom:1px solid rgba(255,192,103,.23);display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.45)}
+.chat-header strong{color:#20355c}
+.chat-thread{flex:1;min-height:390px;max-height:480px;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.38)}
+.chat-empty{margin:auto;color:#8a8377;text-align:center;line-height:1.6}
+.chat-row{display:flex;gap:8px;align-items:flex-end;max-width:78%}
+.chat-row.mine{margin-left:auto;flex-direction:row-reverse}
+.chat-bubble{padding:10px 12px;border-radius:16px 16px 16px 5px;background:#fff;border:1px solid rgba(255,192,103,.23);box-shadow:0 7px 20px rgba(60,45,24,.06);color:#34435c;font-size:13px;line-height:1.5}
+.chat-row.mine .chat-bubble{background:#274f87;color:#fff;border:none;border-radius:16px 16px 5px 16px}
+.chat-bubble img{display:block;max-width:min(260px,100%);max-height:250px;object-fit:cover;border-radius:11px;margin:2px 0 7px}
+.chat-time{display:block;font-size:9px;opacity:.64;margin-top:5px}
+.chat-compose{padding:13px;border-top:1px solid rgba(255,192,103,.23);background:rgba(255,250,241,.88)}
+.chat-compose-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}
+.chat-compose textarea{resize:none;min-height:44px;max-height:100px;width:100%;border-radius:13px}
+.chat-file-btn{width:44px;height:44px;border-radius:13px;border:1px solid rgba(255,192,103,.32);background:#fff;color:#80591f;display:grid;place-items:center;font-size:19px;box-shadow:none}
+.chat-file-name{font-size:10px;color:#887d6b;margin:7px 0 0 53px}
+
+/* ---- Notice board ---- */
+.notice-board-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);gap:16px}
+.notice-board-card{background:linear-gradient(180deg,rgba(255,252,246,.98),rgba(255,244,226,.96));border:1px solid rgba(255,192,103,.27);border-radius:18px;padding:18px;box-shadow:0 12px 28px rgba(143,96,27,.07)}
+.notice-entry{padding:14px 0;border-bottom:1px solid rgba(205,171,112,.22)}
+.notice-entry:last-child{border-bottom:none}
+.notice-entry strong{color:#20355c}
+.notice-entry p{color:#667085;line-height:1.55;margin:6px 0 0}
+.holiday-list{display:grid;gap:0}
+.holiday-row{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:12px 0;border-bottom:1px solid rgba(205,171,112,.22)}
+.holiday-row:last-child{border-bottom:none}
+.holiday-date{font-size:11px;font-weight:800;color:#274f87}
+.holiday-name{font-size:13px;color:#34435c}
+
+/* Greeting and book animation panels in the login palette */
+#welcomeOverlay{background:radial-gradient(circle at 18% 20%,rgba(255,255,255,.62),transparent 25%),radial-gradient(circle at 82% 78%,rgba(255,192,103,.34),transparent 28%),linear-gradient(135deg,#fff8ed 0%,#ffe2b4 54%,#ffc067 140%);color:#20355c}
+#welcomePhase1,#welcomePhase2{background:rgba(255,252,247,.96);border:1px solid rgba(255,192,103,.38);box-shadow:0 25px 64px rgba(124,82,24,.19)}
+.welcome-headline{color:#20355c}.welcome-user{color:#274f87}.welcome-label{background:rgba(255,192,103,.25);color:#8a5c1a}
+.loader-spine{background:linear-gradient(180deg,#ffc067 0%,#b77920 50%,#ffc067 100%);box-shadow:0 0 18px rgba(255,169,51,.34)}
+.workspace-progress{background:rgba(39,79,135,.13)}.workspace-progress span{background:linear-gradient(90deg,#ffc067,#e2962e)}
+.workspace-caption{color:#8a5c1a}.workspace-note{color:#6e7790}
+
+@media (max-width:900px){.workspace-footer{flex-direction:column;align-items:flex-start}.chat-layout,.notice-board-grid{grid-template-columns:1fr}.chat-contacts{max-height:none}.chat-user-list{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));max-height:none}}
+@media (max-width:680px){#app{grid-template-columns:1fr}#sidebar{height:auto;position:relative}.module-grid{grid-template-columns:1fr 1fr}.chat-row{max-width:90%}.welcome-headline{font-size:36px}.welcome-user{font-size:34px}}
+@media (max-width:480px){.module-grid{grid-template-columns:1fr}.module-search{min-width:100%}}
 
 /* ---- Print ---- */
 #printArea{display:none}
@@ -657,11 +748,21 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
   color:#fff;
 }
 #welcomeOverlay[hidden]{display:none !important}
-.welcome-shell{width:min(920px,100%);min-height:420px;padding:32px 24px;display:flex;align-items:center;justify-content:center;text-align:center}
+.welcome-shell{width:min(980px,100%);min-height:420px;padding:32px 24px;display:flex;align-items:center;justify-content:center;text-align:center}
 .welcome-phase{display:flex;flex-direction:column;align-items:center;justify-content:center}
-.welcome-label{color:#2d66ff;font-size:16px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:18px}
-.welcome-headline{font-family:Inter,system-ui,sans-serif;font-size:58px;font-weight:800;line-height:1.05;margin-bottom:10px;color:#fff}
-.welcome-user{font-size:56px;font-weight:900;color:#2d66ff;line-height:1.04;text-transform:none}
+#welcomePhase1,#welcomePhase2{
+  width:min(560px,100%);
+  background:rgba(255,249,241,.96);
+  border:1px solid rgba(255,192,103,.32);
+  border-radius:32px;
+  box-shadow:0 24px 70px rgba(0,0,0,.34), 0 10px 28px rgba(255,192,103,.10);
+  padding:38px 34px;
+  backdrop-filter:blur(10px);
+}
+.welcome-label{display:inline-flex;align-items:center;justify-content:center;padding:8px 16px;border-radius:999px;background:rgba(255,192,103,.22);color:#8a5c1a;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:18px}
+.welcome-headline{font-family:Inter,system-ui,sans-serif;font-size:48px;font-weight:800;line-height:1.05;margin-bottom:10px;color:#20355c}
+.welcome-user{font-size:50px;font-weight:900;color:#274f87;line-height:1.04;text-transform:none}
+.welcome-sub{margin-top:12px;font-size:14px;color:#6e7790;line-height:1.7;max-width:430px}
 .loader-scene{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
 .loader-book{position:relative;width:240px;height:170px;perspective:1400px;animation:loaderFloat 2.8s ease-in-out infinite}
 .loader-spine{position:absolute;left:50%;top:22px;width:10px;height:118px;transform:translateX(-50%);border-radius:99px;background:linear-gradient(180deg,#264db9 0%,#15348d 50%,#264db9 100%);box-shadow:0 0 18px rgba(45,102,255,.34);z-index:4}
@@ -681,8 +782,8 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
 .loader-page-turn{left:50%;width:104px;transform-origin:left center;border-radius:6px 18px 18px 10px;background:linear-gradient(180deg,#fffdfa 0%,#f7edd5 100%),repeating-linear-gradient(to bottom, rgba(160,111,44,.10) 0 1px, transparent 1px 12px);border:1px solid rgba(255,199,99,.28);animation:loaderPageTurn 2.6s ease-in-out infinite;z-index:3}
 .loader-page-turn::before,.loader-left::before,.loader-right::before,.loader-pages-core::before{content:"";position:absolute;left:14px;right:14px;top:14px;height:8px;border-radius:999px;background:rgba(255,120,0,.82)}
 .loader-page-turn::after,.loader-left::after,.loader-right::after,.loader-pages-core::after{content:"";position:absolute;left:14px;right:14px;top:34px;bottom:14px;background:repeating-linear-gradient(to bottom, rgba(70,90,130,.20) 0 1px, transparent 1px 14px);opacity:.65}
-.workspace-caption{color:#9da6bc;font-size:14px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
-.workspace-note{font-size:13px;color:#9ca8c6;margin-top:-6px}
+.workspace-caption{color:#8a5c1a;font-size:14px;letter-spacing:.08em;text-transform:uppercase;font-weight:800}
+.workspace-note{font-size:13px;color:#6e7790;margin-top:-6px}
 .workspace-progress{width:220px;height:4px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
 .workspace-progress span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#2d66ff 0%,#3e86ff 100%);transform-origin:left center;animation:workspaceProgress 2.2s linear infinite}
 @keyframes loaderFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
@@ -770,14 +871,15 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
       <div id="welcomePortalLabel" class="welcome-label">VIDYALAYA SCHOOL PORTAL</div>
       <div class="welcome-headline">Good to see you,</div>
       <div id="welcomeUserName" class="welcome-user">User</div>
+      <div class="welcome-sub">Welcome back to your academic workspace. Your dashboard, records and daily school tools are getting ready.</div>
     </div>
     <div id="welcomePhase2" class="welcome-phase" style="display:none">
       <div class="loader-scene">
         <div class="loader-book" aria-hidden="true">
-          <div class="loader-pages-core"><div class="loader-book-copy center"><strong>VIDYALAYA</strong><small>School Portal</small></div></div>
-          <div class="loader-left"><div class="loader-book-copy"><strong>Learn</strong><small>Read • Explore</small></div></div>
-          <div class="loader-right"><div class="loader-book-copy"><strong>Grow</strong><small>Think • Achieve</small></div></div>
-          <div class="loader-page-turn"><div class="loader-book-copy turn"><strong>Begin</strong><small>Open your day</small></div></div>
+          <div class="loader-pages-core"><div class="loader-book-copy center"><strong>VIDYALAYA</strong><small>Academic Workspace</small></div></div>
+          <div class="loader-left"><div class="loader-book-copy"><strong>Attendance</strong><small>Track each school day</small></div></div>
+          <div class="loader-right"><div class="loader-book-copy"><strong>Progress</strong><small>Records • Results • Growth</small></div></div>
+          <div class="loader-page-turn"><div class="loader-book-copy turn"><strong>Ready</strong><small>Opening your dashboard</small></div></div>
           <div class="loader-spine"></div>
         </div>
         <div class="workspace-caption">ENTERING YOUR WORKSPACE...</div>
@@ -792,8 +894,8 @@ main{padding:24px 28px 64px;overflow-x:auto;background:linear-gradient(180deg,#f
   <aside id="sidebar">
     <div class="sidebar-panel">
       <div class="brand">VIDYALAYA</div>
-      <h3>School Workspace</h3>
-      <p>Student records, attendance, library, fees and day-to-day school administration.</p>
+      <h3>Vidyalaya ERP</h3>
+      <p>School Management Workspace</p>
     </div>
     <div class="who" id="whoLabel"></div>
     <nav id="nav"></nav>
@@ -903,11 +1005,29 @@ const SEED = {
   ]
 };
 const MODULES = {
-  dashboard:"Home", students:"Students & Parents", timetable:"Class Timetable", staffAttendance:"Teacher In/Office/Leave",
+  dashboard:"Home", modulesHub:"Modules", teamChat:"Team Chat", noticeBoard:"Notice Board",
+  students:"Students & Parents", timetable:"Class Timetable", staffAttendance:"Teacher In/Office/Leave",
   library:"Library Portal", fees:"Fees Management", salaryLeave:"Salary & Leave",
   gateLog:"Staff & Driver Entry-Exit", ptm:"PTM Schedule", reportcards:"Report Cards",
   notices:"Notices", homework:"Homework", studentAttendance:"Student Attendance",
   studyMaterial:"Study Material", users:"User Management", myAccount:"My Account", myLeave:"My Leave"
+};
+const MODULE_META = {
+  students:{icon:"👥",category:"Academics",desc:"Student and parent master records"},
+  timetable:{icon:"🗓️",category:"Academics",desc:"Class periods and teacher schedules"},
+  homework:{icon:"📘",category:"Academics",desc:"Teacher homework and assignments"},
+  studentAttendance:{icon:"✅",category:"Academics",desc:"Student attendance import and tracking"},
+  studyMaterial:{icon:"📎",category:"Academics",desc:"Downloadable learning resources"},
+  reportcards:{icon:"📝",category:"Academics",desc:"Marks, grades and printable reports"},
+  ptm:{icon:"🤝",category:"Academics",desc:"Parent-teacher meeting schedule"},
+  staffAttendance:{icon:"🧑‍🏫",category:"People & HR",desc:"Teacher biometric / official leave status"},
+  salaryLeave:{icon:"💼",category:"People & HR",desc:"Salary, attendance and leave processing"},
+  gateLog:{icon:"🚪",category:"People & HR",desc:"Staff and driver entry / exit logs"},
+  myLeave:{icon:"🗓️",category:"People & HR",desc:"Admin-managed leave records"},
+  fees:{icon:"₹",category:"Finance",desc:"Fees, dues and monthly billing"},
+  library:{icon:"📚",category:"Operations",desc:"Book inventory, issue, return and slips"},
+  users:{icon:"⚙️",category:"Administration",desc:"Users, roles, access and passwords"},
+  myAccount:{icon:"🔐",category:"Administration",desc:"Administrator account settings"}
 };
 
 function loadData(){
@@ -924,6 +1044,7 @@ function monthLabel(d=new Date()){ return d.toLocaleString(undefined,{month:'sho
 function normalizeData(){
   DATA.feeMeta = DATA.feeMeta || {lastProcessedMonth:monthKey()};
   DATA.biometric = DATA.biometric || {apiUrl:''};
+  DATA.chatMessages = Array.isArray(DATA.chatMessages) ? DATA.chatMessages : [];
   DATA.holidays = Array.isArray(DATA.holidays) && DATA.holidays.length ? DATA.holidays : JSON.parse(JSON.stringify(SEED.holidays || []));
   DATA.students = DATA.students || [];
   DATA.students.forEach((s,i)=>{ if(typeof s.monthlyFee!=='number') s.monthlyFee=0; if(s.guardianPhone===undefined) s.guardianPhone='—'; if(!s.studentCode) s.studentCode='STU-'+String(s.id||i+1).padStart(3,'0'); });
@@ -996,7 +1117,7 @@ function clearWelcomeSequence(){
 function openWorkspace(){
   document.getElementById('app').classList.add('on');
   document.getElementById('whoLabel').textContent = USER.displayName + " · " + USER.role;
-  CURRENT = USER.access[0] || 'dashboard';
+  CURRENT = 'dashboard';
   renderNav(); renderView();
 }
 function showWelcomeSequence(){
@@ -1045,15 +1166,17 @@ function toggleTheme(){
 function renderNav(){
   const nav = document.getElementById('nav');
   nav.innerHTML='';
-  const items = [...USER.access, ...(USER.role==='Admin'?['myLeave','myAccount']:[])];
-  [...new Set(items)].forEach(key=>{
+  const items = [
+    ['dashboard','🏠'],['modulesHub','🧩'],['teamChat','💬'],['noticeBoard','📣']
+  ];
+  items.forEach(([key,icon])=>{
     const b=document.createElement('button');
-    b.className='navitem'+(key===CURRENT?' active':'');
-    b.textContent=MODULES[key];
+    const isActive=(key===CURRENT)||(key==='modulesHub'&&!['dashboard','modulesHub','teamChat','noticeBoard'].includes(CURRENT));
+    b.className='navitem'+(isActive?' active':'');
+    b.innerHTML=`<span class="nav-icon">${icon}</span><span>${MODULES[key]}</span>`;
     b.onclick=()=>{CURRENT=key; renderNav(); renderView();};
     nav.appendChild(b);
   });
-
 }
 
 /* ---------------- Helpers ---------------- *//* ---------------- Helpers ---------------- */
@@ -1068,20 +1191,22 @@ function studentOptions(){ return DATA.students.map(s=>`<option value="${s.id}">
 function studentName(id){ const s=DATA.students.find(x=>x.id===id); return s?s.name:'Unknown'; }
 
 function renderView(){
-  document.getElementById('pageTitle').textContent = MODULES[CURRENT];
+  document.getElementById('pageTitle').textContent = MODULES[CURRENT] || 'Vidyalaya';
   const sub = document.getElementById('pageSubTitle');
-  if(sub) sub.textContent = CURRENT==='dashboard' ? 'A clean and simple school operations dashboard.' : 'Manage records and workflows for the selected module.';
+  const subtitles={dashboard:'Your school at a glance.',modulesHub:'Everything available to your role, in one place.',teamChat:'Chat with portal users and share images.',noticeBoard:'School announcements and holiday calendar.'};
+  if(sub) sub.textContent = subtitles[CURRENT] || 'Manage records and workflows for the selected module.';
   const v = document.getElementById('view');
   v.innerHTML = VIEWS[CURRENT] ? VIEWS[CURRENT]() : '<p class="empty">Module not available.</p>';
   renderHolidayBulletin();
   if(CURRENT==='users' && USER.role==='Admin') prefillAccess();
+  if(CURRENT==='teamChat') initChatView();
 }
 
 function renderHolidayBulletin(){
   const wrap = document.getElementById('holidayBulletin');
   const track = document.getElementById('holidayTicker');
   if(!wrap || !track) return;
-  if(CURRENT!=='dashboard' || !Array.isArray(DATA.holidays) || !DATA.holidays.length){
+  if(!['dashboard','modulesHub','teamChat','noticeBoard'].includes(CURRENT) || !Array.isArray(DATA.holidays) || !DATA.holidays.length){
     wrap.hidden = true;
     track.innerHTML = '';
     return;
@@ -1099,12 +1224,12 @@ const VIEWS = {
     return `<div class="home-hero">
       <div class="home-hero-card">
         <span class="eyebrow">Welcome back</span>
-        <h3>Hello ${esc(USER.displayName)}, ready for a productive school day?</h3>
-        <p>Your workspace shows the modules and information available for your role. Manage students, attendance, library operations, fees, notices and study resources from one sober, school-friendly dashboard.</p>
+        <h3>Hello ${esc(USER.displayName)}, welcome to Vidyalaya Portal.</h3>
+        <p>Use Modules for your assigned school functions, Team Chat for internal communication, and Notice Board for school-wide announcements—inside one calm, school-friendly workspace.</p>
         <div class="hero-badges">
           <span class="chip">Role: ${esc(USER.role)}</span>
           <span class="chip">Academic session tools</span>
-          <span class="chip">Simple & clean UI</span>
+          <span class="chip">Warm, clean interface</span>
         </div>
       </div>
       <div class="card home-side-stat">
@@ -1125,6 +1250,57 @@ const VIEWS = {
     </div>
     <div class="section"><h2>Latest notices</h2><div class="notice-list">${DATA.notices.slice(0,3).map(n=>`<div class="card notice-card"><strong>${esc(n.title)}</strong><span class="muted">${esc(n.date)}</span><p>${esc(n.body)}</p></div>`).join('')}</div></div>`;
   },
+  modulesHub(){
+    return `<div class="modules-toolbar">
+      <div class="module-search"><input id="moduleSearchInput" placeholder="What do you need today?" oninput="filterModuleCards(this.value)"></div>
+    </div>
+    <div class="module-filters" id="moduleFilters">
+      <button class="module-filter active" onclick="setModuleFilter('All',this)">All</button>
+      <button class="module-filter" onclick="setModuleFilter('Academics',this)">📚 Academics</button>
+      <button class="module-filter" onclick="setModuleFilter('People & HR',this)">👥 People & HR</button>
+      <button class="module-filter" onclick="setModuleFilter('Finance',this)">₹ Finance</button>
+      <button class="module-filter" onclick="setModuleFilter('Operations',this)">🏫 Operations</button>
+      <button class="module-filter" onclick="setModuleFilter('Administration',this)">⚙ Administration</button>
+    </div>
+    <div id="modulesGridHost">${renderModuleGrid()}</div>
+    <footer class="workspace-footer"><div><strong>Vidyalaya ERP</strong><small>School Management Workspace</small></div><div class="workspace-footer-links"><button onclick="openCorePage('dashboard')">Home</button><button onclick="openCorePage('teamChat')">Team Chat</button><button onclick="openCorePage('noticeBoard')">Notice Board</button></div></footer>`;
+  },
+
+  teamChat(){
+    const others=DATA.users.filter(u=>u.id!==USER.id);
+    return `<div class="chat-layout">
+      <aside class="chat-contacts">
+        <h3>Conversations</h3>
+        <p>Select a portal user or the school group. Images up to 1 MB can be shared in this prototype.</p>
+        <div class="chat-user-list" id="chatUserList">
+          <button class="chat-user-btn" data-chat-target="group" onclick="selectChatTarget('group')"><span class="chat-avatar">SG</span><span class="chat-user-meta"><strong>School Group</strong><small>All portal users</small></span></button>
+          ${others.map(u=>`<button class="chat-user-btn" data-chat-target="${u.id}" onclick="selectChatTarget('${u.id}')"><span class="chat-avatar">${esc((u.displayName||u.username).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase())}</span><span class="chat-user-meta"><strong>${esc(u.displayName)}</strong><small>${esc(u.role)}</small></span></button>`).join('')}
+        </div>
+      </aside>
+      <section class="chat-panel">
+        <div class="chat-header"><div><strong id="chatHeaderTitle">School Group</strong><div class="muted" id="chatHeaderSub">Portal conversation</div></div><span class="tag good">Local prototype</span></div>
+        <div class="chat-thread" id="chatThread"></div>
+        <div class="chat-compose">
+          <div class="chat-compose-row">
+            <label class="chat-file-btn" title="Attach image">🖼<input id="chatImageInput" type="file" accept="image/*" style="display:none" onchange="chatImageSelected()"></label>
+            <textarea id="chatTextInput" placeholder="Write a message..." onkeydown="chatKeyDown(event)"></textarea>
+            <button class="btn" onclick="sendChatMessage()">Send</button>
+          </div>
+          <div id="chatFileName" class="chat-file-name"></div>
+          <div id="chatMsg" class="msg"></div>
+        </div>
+      </section>
+    </div>`;
+  },
+
+  noticeBoard(){
+    const noticeHtml=DATA.notices.length?DATA.notices.map((n,i)=>`<div class="notice-entry"><strong>${esc(n.title)}</strong><span class="muted"> · ${esc(n.date)}</span><p>${esc(n.body)}</p>${USER.role==='Admin'?`<button class="btn danger sm" style="margin-top:8px" onclick="deleteNotice(${i})">Delete</button>`:''}</div>`).join(''):'<p class="empty">No notices yet.</p>';
+    return `<div class="notice-board-grid">
+      <section class="notice-board-card"><h3>📣 Announcements</h3><p class="muted">School-wide notices. Only Admin can publish or delete them.</p>${noticeHtml}${USER.role==='Admin'?`<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(205,171,112,.22)"><h3 style="font-size:15px">Publish notice</h3><input id="nTitle" placeholder="Notice title" style="width:100%;margin:7px 0"><textarea id="nBody" placeholder="Notice details" style="width:100%;min-height:80px;margin-bottom:8px"></textarea><button class="btn" onclick="addNotice()">Publish notice</button></div>`:''}</section>
+      <section class="notice-board-card"><h3>📅 Holiday Calendar</h3><p class="muted">Important holidays and school breaks.</p><div class="holiday-list">${DATA.holidays.map(h=>`<div class="holiday-row"><span class="holiday-date">${esc(h.date)}</span><span class="holiday-name">${esc(h.title)}</span></div>`).join('')}</div></section>
+    </div>`;
+  },
+
   students(){
     const editable = canEdit(['Admin','Accountant']);
     let h='';
@@ -1418,6 +1594,84 @@ const VIEWS = {
   }
 
 };
+
+
+let MODULE_FILTER='All';
+function openCorePage(key){CURRENT=key;renderNav();renderView();}
+let CHAT_TARGET='group';
+function availableModuleKeys(){
+  const keys=[...USER.access.filter(k=>!['dashboard','notices'].includes(k))];
+  if(USER.role==='Admin') keys.push('myLeave','myAccount');
+  return [...new Set(keys)].filter(k=>MODULE_META[k]);
+}
+function renderModuleGrid(){
+  const keys=availableModuleKeys();
+  const cats=['Academics','People & HR','Finance','Operations','Administration'];
+  const sections=cats.map(cat=>{
+    let list=keys.filter(k=>MODULE_META[k].category===cat);
+    if(MODULE_FILTER!=='All' && MODULE_FILTER!==cat) list=[];
+    if(!list.length) return '';
+    return `<section class="module-section" data-module-section="${esc(cat)}"><div class="module-section-title">${cat}</div><div class="module-grid">${list.map(k=>{const m=MODULE_META[k];return `<article class="module-card" data-module-card data-key="${k}" data-category="${esc(cat)}" data-search="${esc((MODULES[k]+' '+m.desc+' '+cat).toLowerCase())}" onclick="openModule('${k}')"><span class="live-pill">Available</span><div class="module-card-icon">${m.icon}</div><strong>${esc(MODULES[k])}</strong><small>${esc(m.desc)}</small></article>`}).join('')}</div></section>`;
+  }).join('');
+  return sections || '<div class="modules-empty">No modules are currently assigned to this account.</div>';
+}
+function openModule(key){
+  if(!availableModuleKeys().includes(key)) return;
+  CURRENT=key; renderNav(); renderView();
+}
+function setModuleFilter(cat,btn){
+  MODULE_FILTER=cat;
+  document.querySelectorAll('.module-filter').forEach(x=>x.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const host=document.getElementById('modulesGridHost'); if(host) host.innerHTML=renderModuleGrid();
+  const input=document.getElementById('moduleSearchInput'); if(input && input.value) filterModuleCards(input.value);
+}
+function filterModuleCards(value){
+  const q=String(value||'').trim().toLowerCase();
+  document.querySelectorAll('[data-module-card]').forEach(card=>{card.style.display=(!q || card.dataset.search.includes(q))?'':'none'});
+  document.querySelectorAll('[data-module-section]').forEach(sec=>{const visible=[...sec.querySelectorAll('[data-module-card]')].some(c=>c.style.display!=='none');sec.style.display=visible?'':'none'});
+}
+function userById(id){return DATA.users.find(u=>u.id===Number(id));}
+function selectChatTarget(id){CHAT_TARGET=String(id);renderChatThread();}
+function initChatView(){
+  const valid=CHAT_TARGET==='group'||DATA.users.some(u=>String(u.id)===String(CHAT_TARGET)&&u.id!==USER.id);
+  if(!valid) CHAT_TARGET='group';
+  renderChatThread();
+}
+function chatImageSelected(){
+  const file=document.getElementById('chatImageInput')?.files?.[0];
+  const label=document.getElementById('chatFileName'); if(!label) return;
+  label.textContent=file?`Attached image: ${file.name}`:'';
+}
+function getVisibleChatMessages(){
+  const all=DATA.chatMessages||[];
+  if(CHAT_TARGET==='group') return all.filter(m=>String(m.toId)==='group');
+  const t=Number(CHAT_TARGET); return all.filter(m=>(m.fromId===USER.id&&m.toId===t)||(m.fromId===t&&m.toId===USER.id));
+}
+function renderChatThread(){
+  const thread=document.getElementById('chatThread'); if(!thread) return;
+  document.querySelectorAll('[data-chat-target]').forEach(b=>b.classList.toggle('active',String(b.dataset.chatTarget)===String(CHAT_TARGET)));
+  const title=document.getElementById('chatHeaderTitle'), sub=document.getElementById('chatHeaderSub');
+  if(CHAT_TARGET==='group'){title.textContent='School Group';sub.textContent='Visible to all portal users';}
+  else {const u=userById(CHAT_TARGET);title.textContent=u?u.displayName:'Conversation';sub.textContent=u?u.role:'Portal user';}
+  const msgs=getVisibleChatMessages();
+  if(!msgs.length){thread.innerHTML='<div class="chat-empty">No messages yet.<br>Start the conversation with a message or image.</div>';return;}
+  thread.innerHTML=msgs.map(m=>{const mine=m.fromId===USER.id;const sender=userById(m.fromId);const initials=esc(((sender?.displayName||'User').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase());return `<div class="chat-row ${mine?'mine':''}"><span class="chat-avatar">${initials||'U'}</span><div class="chat-bubble">${m.imageData?`<img src="${m.imageData}" alt="Shared image">`:''}${m.text?`<div>${esc(m.text)}</div>`:''}<span class="chat-time">${esc(m.createdAt||'')}</span></div></div>`}).join('');
+  thread.scrollTop=thread.scrollHeight;
+}
+function chatKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}}
+function sendChatMessage(){
+  const input=document.getElementById('chatTextInput'), fileEl=document.getElementById('chatImageInput'), msg=document.getElementById('chatMsg');
+  const textVal=(input?.value||'').trim(), file=fileEl?.files?.[0];
+  if(!textVal&&!file){if(msg){msg.className='msg err';msg.textContent='Write a message or attach an image.';}return;}
+  if(file && !file.type.startsWith('image/')){msg.className='msg err';msg.textContent='Only image files can be shared.';return;}
+  if(file && file.size>1024*1024){msg.className='msg err';msg.textContent='For this standalone prototype, keep chat images under 1 MB.';return;}
+  const finish=(imageData='')=>{
+    DATA.chatMessages.push({id:Date.now(),fromId:USER.id,toId:CHAT_TARGET==='group'?'group':Number(CHAT_TARGET),text:textVal,imageData,createdAt:new Date().toLocaleString()});
+    saveData(); if(input) input.value=''; if(fileEl) fileEl.value=''; const fn=document.getElementById('chatFileName');if(fn)fn.textContent='';if(msg)msg.textContent='';renderChatThread();
+  };
+  if(file){const r=new FileReader();r.onload=()=>finish(r.result);r.readAsDataURL(file);}else finish();
+}
 
 /* ---------------- Actions ---------------- */
 function addStudent(){
