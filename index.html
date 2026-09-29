@@ -1860,6 +1860,41 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
   .upload-row .btn{flex:1 1 150px}
 }
 
+
+/* ---- Team Chat reliability + viewport layout fix ---- */
+.chat-layout{
+  height:clamp(430px,calc(100vh - 315px),650px) !important;
+  min-height:430px !important;
+  align-items:stretch !important;
+}
+.chat-contacts,.chat-panel{min-height:0 !important;height:100% !important}
+.chat-contacts{display:flex !important;flex-direction:column !important;overflow:hidden !important}
+.chat-user-list{flex:1 1 auto !important;min-height:0 !important;max-height:none !important;overflow:auto !important;padding-right:3px}
+.chat-panel{position:relative !important;min-width:0 !important}
+.chat-thread{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  max-height:none !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+}
+.chat-compose{
+  position:sticky !important;
+  bottom:0 !important;
+  z-index:5 !important;
+  flex:0 0 auto !important;
+  box-shadow:0 -8px 24px rgba(0,0,0,.04);
+}
+.chat-compose-row{grid-template-columns:auto minmax(0,1fr) auto !important}
+.chat-compose textarea{min-height:44px !important;max-height:82px !important}
+.chat-sender-name{font-size:10px;font-weight:900;margin-bottom:4px;opacity:.68}
+.chat-empty b{font-style:normal;color:var(--theme-text,var(--ink));font-size:14px}
+@media(max-width:900px){
+  .chat-layout{height:auto !important;min-height:0 !important}
+  .chat-panel{height:560px !important}
+  .chat-contacts{height:auto !important;max-height:280px !important}
+}
+
 </style>
 </head>
 <body>
@@ -2362,10 +2397,24 @@ function normalizeChatRecord(m,i=0){
   rec.id=String(rec.id);
   rec.fromId=Number(rec.fromId)||0;
   rec.toId=String(rec.toId)==='group'?'group':Number(rec.toId)||0;
+  rec.fromUser=String(rec.fromUser||'').trim().toLowerCase();
+  rec.toUser=String(rec.toUser||'').trim().toLowerCase();
+  rec.fromName=String(rec.fromName||'');
+  rec.toName=String(rec.toName||'');
   rec.text=String(rec.text||'');
   rec.imageData=String(rec.imageData||'');
   rec.createdAt=String(rec.createdAt||'Earlier');
   rec.createdTs=Number(rec.createdTs)||0;
+
+  // Backfill usernames for messages created by earlier versions.
+  if(!rec.fromUser && rec.fromId){
+    const u=DATA.users.find(x=>Number(x.id)===Number(rec.fromId));
+    if(u) rec.fromUser=String(u.username||'').trim().toLowerCase();
+  }
+  if(String(rec.toId)!=='group' && !rec.toUser && rec.toId){
+    const u=DATA.users.find(x=>Number(x.id)===Number(rec.toId));
+    if(u) rec.toUser=String(u.username||'').trim().toLowerCase();
+  }
   return rec;
 }
 
@@ -2408,8 +2457,9 @@ function initChatStore(){
   const stored=readChatStore();
 
   if(stored.messages.length){
-    CHAT_MESSAGES=stored.messages;
-    CHAT_LAST_SNAPSHOT=stored.raw;
+    CHAT_MESSAGES=stored.messages.map(normalizeChatRecord);
+    // Rewrite old chat records once so username routing is persisted.
+    writeChatStore(CHAT_MESSAGES,false);
   }else{
     // One-time migration from older ERP versions.
     const legacy=Array.isArray(DATA.chatMessages)?DATA.chatMessages.map(normalizeChatRecord):[];
@@ -2934,14 +2984,14 @@ const VIEWS = {
     return `<div class="chat-layout">
       <aside class="chat-contacts">
         <h3>Conversations</h3>
-        <p>Select a portal user or the school group. Images up to 1 MB can be shared in this prototype.</p>
+        <p>Select a portal user or the school group. Select a user and send a direct message. The message box remains visible below.</p>
         <div class="chat-user-list" id="chatUserList">
           <button class="chat-user-btn" data-chat-target="group" onclick="selectChatTarget('group')"><span class="chat-avatar">SG</span><span class="chat-user-meta"><strong>School Group</strong><small>All portal users</small></span></button>
           ${others.map(u=>`<button class="chat-user-btn" data-chat-target="${u.id}" onclick="selectChatTarget('${u.id}')"><span class="chat-avatar">${esc((u.displayName||u.username).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase())}</span><span class="chat-user-meta"><strong>${esc(u.displayName)}</strong><small>${esc(u.role)}</small></span></button>`).join('')}
         </div>
       </aside>
       <section class="chat-panel">
-        <div class="chat-header"><div><strong id="chatHeaderTitle">School Group</strong><div class="muted" id="chatHeaderSub">Portal conversation</div></div><span class="tag good">Local prototype</span></div>
+        <div class="chat-header"><div><strong id="chatHeaderTitle">School Group</strong><div class="muted" id="chatHeaderSub">Portal conversation</div></div><span class="tag good">Chat ready</span></div>
         <div class="chat-thread" id="chatThread"></div>
         <div class="chat-compose">
           <div class="chat-compose-row">
@@ -3331,10 +3381,28 @@ function filterModuleCards(value){
   document.querySelectorAll('[data-module-card]').forEach(card=>{card.style.display=(!q || card.dataset.search.includes(q))?'':'none'});
   document.querySelectorAll('[data-module-section]').forEach(sec=>{const visible=[...sec.querySelectorAll('[data-module-card]')].some(c=>c.style.display!=='none');sec.style.display=visible?'':'none'});
 }
-function userById(id){return DATA.users.find(u=>u.id===Number(id));}
-function selectChatTarget(id){CHAT_TARGET=String(id);renderChatThread();}
+function userById(id){return DATA.users.find(u=>Number(u.id)===Number(id));}
+function userByUsername(username){
+  const key=String(username||'').trim().toLowerCase();
+  return DATA.users.find(u=>String(u.username||'').trim().toLowerCase()===key);
+}
+function chatIdentity(u=USER){return String(u?.username||'').trim().toLowerCase();}
+function chatTargetUser(){return CHAT_TARGET==='group'?null:userById(CHAT_TARGET);}
+function selectChatTarget(id){
+  CHAT_TARGET=String(id);
+  renderChatThread();
+  setTimeout(()=>{
+    const input=document.getElementById('chatTextInput');
+    if(input){
+      const target=chatTargetUser();
+      input.placeholder=target?'Message '+(target.displayName||target.username)+'…':'Write a message…';
+      input.focus();
+    }
+  },0);
+}
 function initChatView(){
-  const valid=CHAT_TARGET==='group'||DATA.users.some(u=>String(u.id)===String(CHAT_TARGET)&&u.id!==USER.id);
+  refreshChatStore(false);
+  const valid=CHAT_TARGET==='group'||DATA.users.some(u=>String(u.id)===String(CHAT_TARGET)&&Number(u.id)!==Number(USER.id));
   if(!valid) CHAT_TARGET='group';
   renderChatThread();
 }
@@ -3343,27 +3411,47 @@ function chatImageSelected(){
   const label=document.getElementById('chatFileName'); if(!label) return;
   label.textContent=file?`Attached image: ${file.name}`:'';
 }
+function messageMatchesDirectConversation(m,target){
+  const meUser=chatIdentity(USER);
+  const targetUser=chatIdentity(target);
+  const meId=Number(USER.id);
+  const targetId=Number(target?.id);
+
+  const fromUser=String(m.fromUser||'').toLowerCase();
+  const toUser=String(m.toUser||'').toLowerCase();
+
+  // Username is the primary routing key because it survives account ID changes.
+  if(meUser && targetUser && fromUser && toUser){
+    return (fromUser===meUser && toUser===targetUser) ||
+           (fromUser===targetUser && toUser===meUser);
+  }
+
+  // Compatibility fallback for old messages.
+  return (Number(m.fromId)===meId && Number(m.toId)===targetId) ||
+         (Number(m.fromId)===targetId && Number(m.toId)===meId);
+}
 function getVisibleChatMessages(){
+  refreshChatStore(false);
   const all=CHAT_MESSAGES||[];
-  const me=Number(USER.id);
-  if(CHAT_TARGET==='group') return all.filter(m=>String(m.toId)==='group');
-  const t=Number(CHAT_TARGET);
-  return all.filter(m=>
-    (Number(m.fromId)===me && Number(m.toId)===t) ||
-    (Number(m.fromId)===t && Number(m.toId)===me)
-  );
+  if(CHAT_TARGET==='group') return all.filter(m=>String(m.toId)==='group'||String(m.toUser)==='group');
+  const target=chatTargetUser();
+  if(!target) return [];
+  return all.filter(m=>messageMatchesDirectConversation(m,target));
 }
 
 function incomingChatMessages(){
   if(!USER) return [];
-  const me=Number(USER.id);
-  return (CHAT_MESSAGES||[]).filter(m=>
-    (String(m.toId)==='group' && Number(m.fromId)!==me) ||
-    Number(m.toId)===me
-  );
+  const meUser=chatIdentity(USER);
+  const meId=Number(USER.id);
+  return (CHAT_MESSAGES||[]).filter(m=>{
+    if(String(m.toId)==='group'||String(m.toUser)==='group') return Number(m.fromId)!==meId && String(m.fromUser||'')!==meUser;
+    if(meUser && String(m.toUser||'').toLowerCase()) return String(m.toUser||'').toLowerCase()===meUser;
+    return Number(m.toId)===meId;
+  });
 }
 
 function latestDashboardMessages(limit=5){
+  refreshChatStore(false);
   return incomingChatMessages().slice(-limit).reverse();
 }
 
@@ -3374,14 +3462,34 @@ function openChatFromDashboard(target){
   renderView();
 }
 function renderChatThread(){
+  refreshChatStore(false);
   const thread=document.getElementById('chatThread'); if(!thread) return;
   document.querySelectorAll('[data-chat-target]').forEach(b=>b.classList.toggle('active',String(b.dataset.chatTarget)===String(CHAT_TARGET)));
   const title=document.getElementById('chatHeaderTitle'), sub=document.getElementById('chatHeaderSub');
-  if(CHAT_TARGET==='group'){title.textContent='School Group';sub.textContent='Visible to all portal users';}
-  else {const u=userById(CHAT_TARGET);title.textContent=u?u.displayName:'Conversation';sub.textContent=u?u.role:'Portal user';}
+  const input=document.getElementById('chatTextInput');
+  if(CHAT_TARGET==='group'){
+    title.textContent='School Group';
+    sub.textContent='Visible to all portal users';
+    if(input) input.placeholder='Message School Group…';
+  } else {
+    const u=userById(CHAT_TARGET);
+    title.textContent=u?(u.displayName||u.username):'Conversation';
+    sub.textContent=u?('@'+u.username+' · '+u.role):'Portal user';
+    if(input) input.placeholder=u?'Message '+(u.displayName||u.username)+'…':'Write a message…';
+  }
   const msgs=getVisibleChatMessages();
-  if(!msgs.length){thread.innerHTML='<div class="chat-empty">No messages yet.<br>Start the conversation with a message or image.</div>';return;}
-  thread.innerHTML=msgs.map(m=>{const mine=Number(m.fromId)===Number(USER.id);const sender=userById(m.fromId);const initials=esc(((sender?.displayName||'User').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase());return `<div class="chat-row ${mine?'mine':''}"><span class="chat-avatar">${initials||'U'}</span><div class="chat-bubble">${m.imageData?`<img src="${m.imageData}" alt="Shared image">`:''}${m.text?`<div>${esc(m.text)}</div>`:''}<span class="chat-time">${esc(m.createdAt||'')}</span></div></div>`}).join('');
+  if(!msgs.length){
+    thread.innerHTML='<div class="chat-empty"><b>Start chat</b><br>Send the first message using the box below.</div>';
+    return;
+  }
+  const meUser=chatIdentity(USER);
+  thread.innerHTML=msgs.map(m=>{
+    const mine=(m.fromUser && String(m.fromUser).toLowerCase()===meUser) || (!m.fromUser && Number(m.fromId)===Number(USER.id));
+    const sender=userByUsername(m.fromUser)||userById(m.fromId);
+    const senderName=m.fromName||(sender?.displayName)||(sender?.username)||'User';
+    const initials=esc((senderName.split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase());
+    return `<div class="chat-row ${mine?'mine':''}"><span class="chat-avatar">${initials||'U'}</span><div class="chat-bubble">${!mine?`<div class="chat-sender-name">${esc(senderName)}</div>`:''}${m.imageData?`<img src="${m.imageData}" alt="Shared image">`:''}${m.text?`<div>${esc(m.text)}</div>`:''}<span class="chat-time">${esc(m.createdAt||'')}</span></div></div>`;
+  }).join('');
   thread.scrollTop=thread.scrollHeight;
 }
 function chatKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}}
@@ -3411,10 +3519,19 @@ function sendChatMessage(){
 
   const finish=(imageData='')=>{
     const now=Date.now();
+    const recipient=target==='group'?null:userById(target);
+    if(target!=='group'&&!recipient){
+      if(msg){msg.className='msg err';msg.textContent='Selected user no longer exists. Choose the conversation again.';}
+      return;
+    }
     const rec={
       id:String(now)+'-'+String(USER.id)+'-'+Math.random().toString(36).slice(2,9),
       fromId:Number(USER.id),
-      toId:target==='group'?'group':Number(target),
+      toId:target==='group'?'group':Number(recipient.id),
+      fromUser:chatIdentity(USER),
+      toUser:target==='group'?'group':chatIdentity(recipient),
+      fromName:String(USER.displayName||USER.username||'User'),
+      toName:target==='group'?'School Group':String(recipient.displayName||recipient.username||'User'),
       text:textVal,
       imageData,
       createdAt:new Date(now).toLocaleString('en-IN'),
