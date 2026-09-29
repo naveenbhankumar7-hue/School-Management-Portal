@@ -1852,6 +1852,14 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
   .topbar{align-items:stretch !important}
 }
 
+
+/* Import/export control polish */
+.upload-row .btn{white-space:nowrap}
+@media(max-width:760px){
+  .upload-row input[type=file]{max-width:100%;width:100%}
+  .upload-row .btn{flex:1 1 150px}
+}
+
 </style>
 </head>
 <body>
@@ -2195,6 +2203,14 @@ function normalizeData(){
     if(matches.length) u.linkedStudentIds=matches;
   });
 
+  DATA.teachers.forEach((t,i)=>{
+    if(!Number.isFinite(Number(t.id))) t.id=i+1;
+    t.id=Number(t.id);
+    if(!t.employeeCode) t.employeeCode='TCH-'+String(t.id||i+1).padStart(3,'0');
+    if(!t.name) t.name='Teacher '+(i+1);
+    if(!t.subject) t.subject='—';
+    if(!t.status) t.status='No biometric status';
+  });
   DATA.salary.forEach(x=>{ if(x.presentDays===undefined) x.presentDays='—'; if(x.leaveDays===undefined) x.leaveDays='—'; });
   DATA.timetable.forEach(r=>{ if(!r.cls) r.cls='General'; });
   DATA.studyMaterial.forEach((m,i)=>{ if(!m.id) m.id=i+1; if(m.fileName===undefined) m.fileName=''; if(m.dataUrl===undefined) m.dataUrl=''; });
@@ -2328,6 +2344,122 @@ function readSheet(file, done, msgId){
 }
 
 
+
+/* ---------------------------------------------------------
+   DEDICATED CHAT STORE
+   Chat is intentionally stored separately from the main ERP
+   DATA object so a normal data save cannot overwrite messages.
+   --------------------------------------------------------- */
+const CHAT_STORAGE_KEY='vidyalaya_chat_v2';
+const CHAT_CHANNEL_NAME='vidyalaya_chat_channel_v2';
+let CHAT_MESSAGES=[];
+let CHAT_LAST_SNAPSHOT='';
+let CHAT_CHANNEL=null;
+
+function normalizeChatRecord(m,i=0){
+  const rec=(m&&typeof m==='object')?{...m}:{};
+  if(rec.id===undefined||rec.id===null||rec.id==='') rec.id='legacy-'+Date.now()+'-'+i;
+  rec.id=String(rec.id);
+  rec.fromId=Number(rec.fromId)||0;
+  rec.toId=String(rec.toId)==='group'?'group':Number(rec.toId)||0;
+  rec.text=String(rec.text||'');
+  rec.imageData=String(rec.imageData||'');
+  rec.createdAt=String(rec.createdAt||'Earlier');
+  rec.createdTs=Number(rec.createdTs)||0;
+  return rec;
+}
+
+function readChatStore(){
+  try{
+    const raw=localStorage.getItem(CHAT_STORAGE_KEY);
+    if(!raw) return {raw:'',messages:[]};
+    const parsed=JSON.parse(raw);
+    const arr=Array.isArray(parsed)?parsed:(Array.isArray(parsed?.messages)?parsed.messages:[]);
+    return {raw,messages:arr.map(normalizeChatRecord)};
+  }catch(err){
+    console.warn('Chat store could not be read.',err);
+    return {raw:'',messages:[]};
+  }
+}
+
+function writeChatStore(messages,broadcast=true){
+  try{
+    const dedup=new Map();
+    (messages||[]).map(normalizeChatRecord).forEach(m=>dedup.set(String(m.id),m));
+    const merged=[...dedup.values()].sort((a,b)=>
+      (Number(a.createdTs)||0)-(Number(b.createdTs)||0) ||
+      String(a.id).localeCompare(String(b.id))
+    );
+    const raw=JSON.stringify(merged);
+    localStorage.setItem(CHAT_STORAGE_KEY,raw);
+    CHAT_MESSAGES=merged;
+    CHAT_LAST_SNAPSHOT=raw;
+    if(broadcast && CHAT_CHANNEL){
+      try{CHAT_CHANNEL.postMessage({type:'chat-updated',at:Date.now()});}catch(e){}
+    }
+    return true;
+  }catch(err){
+    console.error('Chat save failed.',err);
+    return false;
+  }
+}
+
+function initChatStore(){
+  const stored=readChatStore();
+
+  if(stored.messages.length){
+    CHAT_MESSAGES=stored.messages;
+    CHAT_LAST_SNAPSHOT=stored.raw;
+  }else{
+    // One-time migration from older ERP versions.
+    const legacy=Array.isArray(DATA.chatMessages)?DATA.chatMessages.map(normalizeChatRecord):[];
+    CHAT_MESSAGES=legacy;
+    if(legacy.length) writeChatStore(legacy,false);
+  }
+
+  if('BroadcastChannel' in window){
+    try{
+      CHAT_CHANNEL=new BroadcastChannel(CHAT_CHANNEL_NAME);
+      CHAT_CHANNEL.onmessage=()=>refreshChatStore(true);
+    }catch(err){
+      CHAT_CHANNEL=null;
+    }
+  }
+}
+
+function refreshChatStore(refreshUi=true){
+  const stored=readChatStore();
+  if(stored.raw===CHAT_LAST_SNAPSHOT) return false;
+
+  CHAT_MESSAGES=stored.messages;
+  CHAT_LAST_SNAPSHOT=stored.raw;
+
+  if(refreshUi && USER){
+    if(CURRENT==='teamChat'){
+      const input=document.getElementById('chatTextInput');
+      const draft=input?input.value:'';
+      renderNav();
+      renderView();
+      const restored=document.getElementById('chatTextInput');
+      if(restored) restored.value=draft;
+    }else if(CURRENT==='dashboard'){
+      renderNav();
+      renderView();
+    }else{
+      renderNav();
+    }
+  }
+  return true;
+}
+
+function appendChatMessage(record){
+  // Re-read immediately before write so concurrent tabs are merged.
+  const latest=readChatStore().messages;
+  const merged=[...latest,normalizeChatRecord(record)];
+  return writeChatStore(merged,true);
+}
+
+
 /* ---------------------------------------------------------
    LIVE LOCAL CHAT / ACCOUNT SYNC
    Keeps another open portal tab up to date when a message,
@@ -2388,13 +2520,67 @@ function syncPortalDataFromStorage(refreshUi=true){
 
 window.addEventListener('storage',function(e){
   if(e.key==='vidyalaya_data_v5') syncPortalDataFromStorage(true);
+  if(e.key===CHAT_STORAGE_KEY) refreshChatStore(true);
 });
 
 /* Some browsers are inconsistent with storage events for local HTML files,
    so also poll gently while a user is signed in. */
 setInterval(function(){
-  if(USER) syncPortalDataFromStorage(true);
-},1500);
+  if(USER){
+    syncPortalDataFromStorage(true);
+    refreshChatStore(true);
+  }
+},1200);
+
+
+/* ---------------- Session persistence ---------------- */
+const SESSION_KEY='vidyalaya_session_v1';
+function savePortalSession(){
+  if(!USER) return;
+  try{
+    sessionStorage.setItem(SESSION_KEY,JSON.stringify({
+      userId:Number(USER.id),
+      username:String(USER.username||''),
+      current:CURRENT||'dashboard',
+      savedAt:Date.now()
+    }));
+  }catch(e){console.warn('Session could not be saved.',e);}
+}
+function clearPortalSession(){
+  try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}
+}
+function sessionPageAllowed(key){
+  if(!USER) return false;
+  if(['dashboard','modulesHub','teamChat','noticeBoard'].includes(key)) return true;
+  if(USER.role==='Admin' && ['myAccount','myLeave'].includes(key)) return true;
+  return Array.isArray(USER.access) && USER.access.includes(key);
+}
+function restorePortalSession(){
+  let sess=null;
+  try{
+    const raw=sessionStorage.getItem(SESSION_KEY);
+    if(raw) sess=JSON.parse(raw);
+  }catch(e){clearPortalSession();}
+  if(!sess) return false;
+
+  reloadPortalData();
+  const user=DATA.users.find(u=>Number(u.id)===Number(sess.userId)) ||
+    DATA.users.find(u=>String(u.username||'').toLowerCase()===String(sess.username||'').toLowerCase());
+  if(!user){clearPortalSession();return false;}
+
+  USER=user;
+  CURRENT=sessionPageAllowed(sess.current)?sess.current:'dashboard';
+  processMonthlyFees();
+  clearWelcomeSequence();
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').classList.add('on');
+  loadUserTheme();
+  document.getElementById('whoLabel').textContent=USER.displayName+' · '+USER.role;
+  renderNav();
+  renderView();
+  savePortalSession();
+  return true;
+}
 
 /* ---------------- Auth ---------------- *//* ---------------- Auth ---------------- */
 let welcomeTimers=[];
@@ -2536,7 +2722,9 @@ function doSignIn(e){
   msg.className='msg';
   msg.textContent='';
   USER = found;
+  CURRENT='dashboard';
   processMonthlyFees();
+  savePortalSession();
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.remove('on');
   playLoginWelcomeVoice();
@@ -2544,6 +2732,7 @@ function doSignIn(e){
   return false;
 }
 function signOut(){
+  clearPortalSession();
   clearWelcomeSequence();
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
   USER=null; CHAT_TARGET='group';
@@ -2641,6 +2830,7 @@ function renderView(){
   renderHolidayBulletin();
   if(CURRENT==='users' && USER.role==='Admin') prefillAccess();
   if(CURRENT==='teamChat') initChatView();
+  savePortalSession();
 }
 
 function renderHolidayBulletin(){
@@ -2781,7 +2971,7 @@ const VIEWS = {
       h+=`<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Import Students & Parents</h3>
         <div class="muted">Excel columns: Student ID, Student Name, Class, Parent/Guardian, Parent Mobile, Monthly Fee, Opening Due. Existing students are matched by Student ID or Student Name + Class.</div>
-        <div class="upload-row"><input id="studentFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importStudentsData()">Upload student sheet</button></div>
+        <div class="upload-row"><input id="studentFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importStudentsData()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('students')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('students')">Export Current Data</button></div>
         <div id="studentImportMsg" class="msg"></div>
       </div>
       <div class="card" style="margin-bottom:18px">
@@ -2811,6 +3001,13 @@ const VIEWS = {
       h+=`<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Manage class timetable</h3>
         <div class="muted">Admin and Teachers can manage it. Admin may also grant Timetable access to another staff user from User Management.</div>
+        <div class="upload-row">
+          <input id="timetableFile" type="file" accept=".xlsx,.xls,.csv">
+          <button class="btn" onclick="importTimetableData()">Import Excel/CSV</button>
+          <button class="btn ghost" onclick="downloadCsvTemplate('timetable')">Download Format</button>
+          <button class="btn ghost" onclick="exportSectionCsv('timetable')">Export Current Data</button>
+        </div>
+        <div id="timetableImportMsg" class="msg"></div>
         <div class="form-grid" style="margin-top:8px">
           <div><label>Class / Section</label><input id="ttClass" placeholder="e.g. 6-A"></div><div><label>Time</label><input id="ttTime" placeholder="8:00–8:45"></div>
           <div><label>Monday</label><input id="ttMon"></div><div><label>Tuesday</label><input id="ttTue"></div>
@@ -2828,13 +3025,19 @@ const VIEWS = {
     let h='';
     if(USER.role==='Admin'){
       h+=`<div class="card" style="margin-bottom:18px">
+        <h3 style="font-size:15px">Teacher Master — Excel Import</h3>
+        <div class="muted">Columns: Employee ID, Teacher Name, Subject, Status, Username, Password. Username and Password are optional; when both are supplied for a new row, a Teacher login account is also created.</div>
+        <div class="upload-row"><input id="teacherFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importTeachersData()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('teachers')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('teachers')">Export Current Data</button></div>
+        <div id="teacherImportMsg" class="msg"></div>
+      </div>
+      <div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Teacher biometric / official leave sync</h3>
         <div class="muted">Fetch teacher presence and official-leave status from the biometric middleware. Supported JSON fields include name/employeeName, in/checkIn, out/checkOut, and status/attendanceStatus or officialLeave.</div>
         <div class="upload-row"><input id="teacherBioUrl" style="min-width:320px" placeholder="https://server.example/api/biometric/teachers" value="${esc(DATA.biometric.apiUrl||'')}"><button class="btn" onclick="syncTeacherBiometric()">Fetch teacher status</button></div>
         <div id="teacherBioMsg" class="msg"></div>
       </div>`;
     }
-    h += tbl(['Teacher','Subject','Biometric In','Biometric Out','Official Status'],DATA.teachers.map(t=>[esc(t.name),esc(t.subject),esc(t.biometricIn||'—'),esc(t.biometricOut||'—'),`<span class="tag ${t.status==='In Office'?'good':(String(t.status).toLowerCase().includes('leave')?'warn':'neutral')}">${esc(t.status||'No biometric status')}</span>`]));
+    h += tbl(['Employee ID','Teacher','Subject','Biometric In','Biometric Out','Official Status'],DATA.teachers.map(t=>[esc(t.employeeCode||'—'),esc(t.name),esc(t.subject),esc(t.biometricIn||'—'),esc(t.biometricOut||'—'),`<span class="tag ${t.status==='In Office'?'good':(String(t.status).toLowerCase().includes('leave')?'warn':'neutral')}">${esc(t.status||'No biometric status')}</span>`]));
     return '<div class="section">'+h+'</div>';
   },
   library(){
@@ -2844,7 +3047,7 @@ const VIEWS = {
       h+=`<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Book Inventory — Excel Import</h3>
         <div class="muted">Initial inventory can be loaded from Excel. Columns: Accession No, Title, Author, Category, Total Copies. Student data always comes from the Students & Parents module.</div>
-        <div class="upload-row"><input id="libFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importLibraryBooks()">Upload books</button></div>
+        <div class="upload-row"><input id="libFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importLibraryBooks()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('library')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('library')">Export Current Data</button></div>
         <div id="libMsg" class="msg"></div>
       </div>
       <div class="card" style="margin-bottom:18px">
@@ -2894,7 +3097,7 @@ const VIEWS = {
       h+=`<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Initial fee data import</h3>
         <div class="muted">Excel columns: Student Name, Class, Parent/Guardian, Monthly Fee, Opening Due. Existing students are updated by name + class; new students are created.</div>
-        <div class="upload-row"><input id="feeImportFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importFeeData()">Upload fee sheet</button></div>
+        <div class="upload-row"><input id="feeImportFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importFeeData()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('fees')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('fees')">Export Current Data</button></div>
         <div id="feeImportMsg" class="msg"></div>
         <div class="muted" style="margin-top:8px">Monthly fee is added once for a new month when the portal is first opened in that month, so pending dues are reflected from the 1st onward.</div>
       </div>
@@ -2926,7 +3129,7 @@ const VIEWS = {
       h += `<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Salary / attendance Excel import</h3>
         <div class="muted">Excel columns: Name, Role, Monthly Salary, Present Days, Leave Days, Month, Payment Status.</div>
-        <div class="upload-row"><input id="salaryFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importSalaryData()">Upload salary sheet</button></div>
+        <div class="upload-row"><input id="salaryFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importSalaryData()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('salary')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('salary')">Export Current Data</button></div>
         <div id="salaryMsg" class="msg"></div>
       </div>`;
     }
@@ -2974,7 +3177,7 @@ const VIEWS = {
       h+=`<div class="card" style="margin-bottom:18px">
         <h3 style="font-size:15px">Upload achieved marks</h3>
         <div class="muted">Excel columns: Student Name, Class, Term, Subject, Marks Obtained, Max Marks, Grade, Remarks. One row per subject.</div>
-        <div class="upload-row"><input id="reportFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importReportCards()">Upload marks</button></div>
+        <div class="upload-row"><input id="reportFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importReportCards()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('reportcards')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('reportcards')">Export Current Data</button></div>
         <div id="reportMsg" class="msg"></div>
       </div>`;
     }
@@ -3020,7 +3223,7 @@ const VIEWS = {
     if(editable){
       h+=`<div class="card" style="margin-bottom:18px"><h3 style="font-size:15px">Upload Student Attendance</h3>
         <div class="muted">Excel columns: Student ID or Student Name, Class, Attendance %. You can also provide Present Days and Working Days; the portal will calculate the percentage.</div>
-        <div class="upload-row"><input id="attendanceFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importStudentAttendance()">Upload attendance</button></div><div id="attendanceMsg" class="msg"></div></div>`;
+        <div class="upload-row"><input id="attendanceFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importStudentAttendance()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('attendance')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('attendance')">Export Current Data</button></div><div id="attendanceMsg" class="msg"></div></div>`;
     }
     const rows = visibleStudentsForUser().map(s=>[esc(s.studentCode||'—'),esc(s.name),esc(s.cls),esc(s.attendance)]);
     h+=tbl(['Student ID','Student','Class','Attendance this term'], rows);
@@ -3064,7 +3267,12 @@ const VIEWS = {
   users(){
     if(USER.role!=='Admin') return '<p class="empty">You do not have access to this section.</p>';
     const roleOpts = Object.keys(DEFAULT_ACCESS).map(r=>`<option>${r}</option>`).join('');
-    let h = `<div class="card" style="margin-bottom:22px"><h3 style="font-size:16px;margin-bottom:10px">Add a new user</h3><div class="tag good" style="margin-bottom:10px">Admin Full Control</div>
+    let h = `<div class="card" style="margin-bottom:18px">
+      <h3 style="font-size:16px;margin-bottom:8px">Parent Login Accounts — Excel Import</h3>
+      <div class="muted">Columns: Parent Name, Username, Password, Student ID, Student Name, Class. Repeat the same Username on more than one row to link multiple children. Password is required only when creating a new parent account.</div>
+      <div class="upload-row"><input id="parentUserFile" type="file" accept=".xlsx,.xls,.csv"><button class="btn" onclick="importParentUsers()">Import Excel/CSV</button><button class="btn ghost" onclick="downloadCsvTemplate('parents')">Download Format</button><button class="btn ghost" onclick="exportSectionCsv('parents')">Export Current Data</button></div>
+      <div id="parentImportMsg" class="msg"></div>
+    </div><div class="card" style="margin-bottom:22px"><h3 style="font-size:16px;margin-bottom:10px">Add a new user</h3><div class="tag good" style="margin-bottom:10px">Admin Full Control</div>
       <div class="form-grid"><div><label>Display name</label><input id="uName"></div><div><label>Username</label><input id="uUser"></div><div><label>Password</label><input id="uPass" type="password"></div><div><label>Role</label><select id="uRole" onchange="prefillAccess()">${roleOpts}</select></div></div>
       <div style="margin-top:12px"><label style="font-size:12px;color:var(--ink-soft)">Section access</label><div class="chk-list" id="newAccessList"></div></div>
       <button class="btn" style="margin-top:6px" onclick="addUser()">Create user</button><div id="userMsg" class="msg"></div></div>
@@ -3136,7 +3344,7 @@ function chatImageSelected(){
   label.textContent=file?`Attached image: ${file.name}`:'';
 }
 function getVisibleChatMessages(){
-  const all=DATA.chatMessages||[];
+  const all=CHAT_MESSAGES||[];
   const me=Number(USER.id);
   if(CHAT_TARGET==='group') return all.filter(m=>String(m.toId)==='group');
   const t=Number(CHAT_TARGET);
@@ -3149,7 +3357,7 @@ function getVisibleChatMessages(){
 function incomingChatMessages(){
   if(!USER) return [];
   const me=Number(USER.id);
-  return (DATA.chatMessages||[]).filter(m=>
+  return (CHAT_MESSAGES||[]).filter(m=>
     (String(m.toId)==='group' && Number(m.fromId)!==me) ||
     Number(m.toId)===me
   );
@@ -3178,24 +3386,273 @@ function renderChatThread(){
 }
 function chatKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}}
 function sendChatMessage(){
-  const input=document.getElementById('chatTextInput'), fileEl=document.getElementById('chatImageInput'), msg=document.getElementById('chatMsg');
-  const selectedTarget=CHAT_TARGET;
+  const input=document.getElementById('chatTextInput');
+  const fileEl=document.getElementById('chatImageInput');
+  const msg=document.getElementById('chatMsg');
 
-  // Merge the newest saved messages before adding ours, so sending from
-  // two open accounts does not overwrite the other person's message.
-  syncPortalDataFromStorage(false);
-  CHAT_TARGET=selectedTarget;
-  const textVal=(input?.value||'').trim(), file=fileEl?.files?.[0];
-  if(!textVal&&!file){if(msg){msg.className='msg err';msg.textContent='Write a message or attach an image.';}return;}
-  if(file && !file.type.startsWith('image/')){msg.className='msg err';msg.textContent='Only image files can be shared.';return;}
-  if(file && file.size>768*1024){msg.className='msg err';msg.textContent='Keep chat images under 750 KB in this standalone prototype.';return;}
+  const target=CHAT_TARGET;
+  refreshChatStore(false);
+
+  const textVal=(input?.value||'').trim();
+  const file=fileEl?.files?.[0];
+
+  if(!textVal&&!file){
+    if(msg){msg.className='msg err';msg.textContent='Write a message or attach an image.';}
+    return;
+  }
+  if(file && !file.type.startsWith('image/')){
+    if(msg){msg.className='msg err';msg.textContent='Only image files can be shared.';}
+    return;
+  }
+  if(file && file.size>600*1024){
+    if(msg){msg.className='msg err';msg.textContent='Keep chat images under 600 KB in this standalone version.';}
+    return;
+  }
+
   const finish=(imageData='')=>{
-    const rec={id:Date.now()+Math.floor(Math.random()*1000),fromId:USER.id,toId:CHAT_TARGET==='group'?'group':Number(CHAT_TARGET),text:textVal,imageData,createdAt:new Date().toLocaleString('en-IN')};
-    DATA.chatMessages.push(rec);
-    if(!saveData()){DATA.chatMessages.pop();if(msg){msg.className='msg err';msg.textContent='Message could not be saved because browser storage is full.';}return;}
-    if(input) input.value=''; if(fileEl) fileEl.value=''; const fn=document.getElementById('chatFileName');if(fn)fn.textContent='';if(msg){msg.className='msg';msg.textContent='';}renderChatThread();
+    const now=Date.now();
+    const rec={
+      id:String(now)+'-'+String(USER.id)+'-'+Math.random().toString(36).slice(2,9),
+      fromId:Number(USER.id),
+      toId:target==='group'?'group':Number(target),
+      text:textVal,
+      imageData,
+      createdAt:new Date(now).toLocaleString('en-IN'),
+      createdTs:now
+    };
+
+    if(!appendChatMessage(rec)){
+      if(msg){
+        msg.className='msg err';
+        msg.textContent='Message could not be saved. Browser storage may be full.';
+      }
+      return;
+    }
+
+    CHAT_TARGET=target;
+    if(input) input.value='';
+    if(fileEl) fileEl.value='';
+    const fn=document.getElementById('chatFileName');
+    if(fn) fn.textContent='';
+    if(msg){msg.className='msg ok';msg.textContent='Sent';}
+    renderChatThread();
+    setTimeout(()=>{
+      const status=document.getElementById('chatMsg');
+      if(status&&status.textContent==='Sent') status.textContent='';
+    },1000);
   };
-  if(file){const r=new FileReader();r.onload=()=>finish(r.result);r.onerror=()=>{if(msg){msg.className='msg err';msg.textContent='The selected image could not be read.';}};r.readAsDataURL(file);}else finish();
+
+  if(file){
+    const r=new FileReader();
+    r.onload=()=>finish(String(r.result||''));
+    r.onerror=()=>{
+      if(msg){msg.className='msg err';msg.textContent='The selected image could not be read.';}
+    };
+    r.readAsDataURL(file);
+  }else{
+    finish();
+  }
+}
+
+
+/* ---------------- Import templates ---------------- */
+const IMPORT_TEMPLATES={
+  students:{file:'Students_Parents_Template.csv',headers:['Student ID','Student Name','Class','Parent/Guardian','Parent Mobile','Monthly Fee','Opening Due'],sample:['STU-101','Aarav Sharma','6-A','Rohit Sharma','9876543210','2500','0']},
+  teachers:{file:'Teachers_Template.csv',headers:['Employee ID','Teacher Name','Subject','Status','Username','Password'],sample:['TCH-101','Anita Verma','Mathematics','In Office','anita.verma','1234']},
+  parents:{file:'Parent_Accounts_Template.csv',headers:['Parent Name','Username','Password','Student ID','Student Name','Class'],sample:['Rohit Sharma','rohit.sharma','1234','STU-101','Aarav Sharma','6-A']},
+  library:{file:'Library_Books_Template.csv',headers:['Accession No','Title','Author','Category','Total Copies'],sample:['LIB-1001','NCERT Mathematics VI','NCERT','Mathematics','3']},
+  fees:{file:'Fees_Template.csv',headers:['Student Name','Class','Parent/Guardian','Monthly Fee','Opening Due'],sample:['Aarav Sharma','6-A','Rohit Sharma','2500','0']},
+  salary:{file:'Salary_Attendance_Template.csv',headers:['Name','Role','Monthly Salary','Present Days','Leave Days','Month','Payment Status'],sample:['Anita Verma','Teacher','48000','24','1','Sep 2026','Paid']},
+  reportcards:{file:'Report_Cards_Template.csv',headers:['Student ID','Student Name','Class','Term','Subject','Marks Obtained','Max Marks','Grade','Remarks'],sample:['STU-101','Aarav Sharma','6-A','Term 1','Mathematics','86','100','A','Good progress']},
+  attendance:{file:'Student_Attendance_Template.csv',headers:['Student ID','Student Name','Class','Attendance %','Present Days','Working Days'],sample:['STU-101','Aarav Sharma','6-A','92','','']},
+  timetable:{file:'Class_Timetable_Template.csv',headers:['Class','Time','Monday','Tuesday','Wednesday','Thursday','Friday'],sample:['6-A','8:00–8:45','Mathematics','Science','English','Mathematics','Hindi']}
+};
+function csvCell(v){
+  const s=String(v??'');
+  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function downloadCsvFile(fileName,headers,rows=[]){
+  const lines=[headers,...rows].map(r=>r.map(csvCell).join(','));
+  const csv='\ufeff'+lines.join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+function downloadCsvTemplate(key){
+  const t=IMPORT_TEMPLATES[key];
+  if(!t) return;
+  downloadCsvFile(t.file,t.headers,[t.sample]);
+}
+
+function exportSectionCsv(key){
+  const t=IMPORT_TEMPLATES[key];
+  if(!t){alert('Export format is not configured for this section.');return;}
+
+  let rows=[];
+  let file='Export_'+t.file;
+
+  if(key==='students'){
+    rows=DATA.students.map(s=>[
+      s.studentCode||'',s.name||'',s.cls||'',s.guardian||'',s.guardianPhone||'',
+      Number(s.monthlyFee)||0,Number(s.feeDue)||0
+    ]);
+    file='Students_Parents_Current_Data.csv';
+  }
+
+  if(key==='teachers'){
+    rows=DATA.teachers.map(t=>{
+      const login=DATA.users.find(u=>u.role==='Teacher' &&
+        String(u.displayName||'').trim().toLowerCase()===String(t.name||'').trim().toLowerCase());
+      return [t.employeeCode||'',t.name||'',t.subject||'',t.status||'',login?.username||'',''];
+    });
+    file='Teachers_Current_Data.csv';
+  }
+
+  if(key==='parents'){
+    const parents=DATA.users.filter(u=>u.role==='Parent');
+    parents.forEach(u=>{
+      const links=Array.isArray(u.linkedStudentIds)?u.linkedStudentIds:[];
+      if(!links.length){
+        rows.push([u.displayName||'',u.username||'','','','','']);
+      }else{
+        links.forEach(id=>{
+          const s=DATA.students.find(x=>Number(x.id)===Number(id));
+          rows.push([u.displayName||'',u.username||'','',s?.studentCode||'',s?.name||'',s?.cls||'']);
+        });
+      }
+    });
+    file='Parent_Accounts_Current_Data.csv';
+  }
+
+  if(key==='library'){
+    rows=DATA.library.map(b=>[
+      b.accessionNo||'',b.title||'',b.author||'',b.category||'',Number(b.totalCopies)||1
+    ]);
+    file='Library_Books_Current_Data.csv';
+  }
+
+  if(key==='fees'){
+    rows=DATA.students.map(s=>[
+      s.name||'',s.cls||'',s.guardian||'',Number(s.monthlyFee)||0,Number(s.feeDue)||0
+    ]);
+    file='Fees_Current_Data.csv';
+  }
+
+  if(key==='salary'){
+    rows=DATA.salary.map(s=>{
+      const paid=String(s.paid||'');
+      const parts=paid.split(/\s+—\s+/);
+      const month=parts.length>1?parts[0]:'';
+      const status=parts.length>1?parts.slice(1).join(' — '):paid;
+      return [
+        s.name||'',s.role||'',parseNumberCell(s.monthly,0),
+        s.presentDays??'',s.leaveDays??'',month,status||''
+      ];
+    });
+    file='Salary_Attendance_Current_Data.csv';
+  }
+
+  if(key==='reportcards'){
+    rows=DATA.reportcards.map(r=>{
+      const s=DATA.students.find(x=>Number(x.id)===Number(r.studentId));
+      return [
+        s?.studentCode||'',s?.name||'',s?.cls||'',r.term||'',
+        r.subject||'Overall',r.marksObtained??'',r.maxMarks??'',
+        r.grade||'',r.remarks||r.result||''
+      ];
+    });
+    file='Report_Cards_Current_Data.csv';
+  }
+
+  if(key==='attendance'){
+    rows=DATA.students.map(s=>[
+      s.studentCode||'',s.name||'',s.cls||'',s.attendance||'','',''
+    ]);
+    file='Student_Attendance_Current_Data.csv';
+  }
+
+  if(key==='timetable'){
+    rows=DATA.timetable.map(r=>[
+      r.cls||'General',r.time||'',r.mon||'',r.tue||'',r.wed||'',r.thu||'',r.fri||''
+    ]);
+    file='Class_Timetable_Current_Data.csv';
+  }
+
+  downloadCsvFile(file,t.headers,rows);
+}
+
+function importTeachersData(){
+  if(!USER||USER.role!=='Admin') return;
+  const file=document.getElementById('teacherFile').files[0];
+  readSheet(file,rows=>{
+    let created=0,updated=0,accounts=0,skipped=0;
+    rows.forEach(row=>{
+      const code=String(pick(row,['Employee ID','Teacher ID','Employee Code','Staff ID'])).trim();
+      const name=String(pick(row,['Teacher Name','Name','Employee Name'])).trim();
+      if(!name){skipped++;return;}
+      const subject=String(pick(row,['Subject','Department'])).trim()||'—';
+      const status=String(pick(row,['Status','Official Status','Attendance Status'])).trim()||'No biometric status';
+      const username=String(pick(row,['Username','Login ID','User ID'])).trim();
+      const password=String(pick(row,['Password','Login Password'])).trim();
+      let rec=(code?DATA.teachers.find(t=>String(t.employeeCode||'').toLowerCase()===code.toLowerCase()):null) || DATA.teachers.find(t=>String(t.name||'').toLowerCase()===name.toLowerCase());
+      if(!rec){
+        const id=Math.max(0,...DATA.teachers.map(t=>Number(t.id)||0))+1;
+        rec={id,employeeCode:code||('TCH-'+String(id).padStart(3,'0')),name,subject,status};
+        DATA.teachers.push(rec);created++;
+      }else{
+        rec.employeeCode=code||rec.employeeCode;rec.name=name;rec.subject=subject;rec.status=status;updated++;
+      }
+      if(username){
+        let u=DATA.users.find(x=>String(x.username||'').toLowerCase()===username.toLowerCase());
+        if(!u && password){
+          const id=Math.max(0,...DATA.users.map(x=>Number(x.id)||0))+1;
+          DATA.users.push({id,username,password,displayName:name,role:'Teacher',access:[...DEFAULT_ACCESS.Teacher]});accounts++;
+        }else if(u && u.role==='Teacher'){
+          u.displayName=name;
+          if(password)u.password=password;
+        }
+      }
+    });
+    if(!saveData()){const m=document.getElementById('teacherImportMsg');m.className='msg err';m.textContent='Teacher data could not be saved: '+(LAST_SAVE_ERROR||'storage error');return;}
+    const msg=document.getElementById('teacherImportMsg');msg.className='msg ok';msg.textContent=`Teachers: ${created} new, ${updated} updated; ${accounts} login account(s) created${skipped?`; ${skipped} row(s) skipped`:''}.`;renderView();
+  },'teacherImportMsg');
+}
+
+function importParentUsers(){
+  if(!USER||USER.role!=='Admin') return;
+  const file=document.getElementById('parentUserFile').files[0];
+  readSheet(file,rows=>{
+    let created=0,updated=0,linked=0,skipped=0;
+    rows.forEach(row=>{
+      const parentName=String(pick(row,['Parent Name','Parent/Guardian','Guardian','Display Name'])).trim();
+      const username=String(pick(row,['Username','Login ID','User ID'])).trim();
+      const password=String(pick(row,['Password','Login Password'])).trim();
+      const studentCode=String(pick(row,['Student ID','Student Code','Admission No'])).trim();
+      const studentName=String(pick(row,['Student Name','Student'])).trim();
+      const cls=String(pick(row,['Class','Class Section'])).trim();
+      if(!parentName||!username){skipped++;return;}
+      const st=(studentCode?DATA.students.find(s=>String(s.studentCode||'').toLowerCase()===studentCode.toLowerCase()):null) || DATA.students.find(s=>String(s.name||'').toLowerCase()===studentName.toLowerCase()&&(!cls||String(s.cls||'').toLowerCase()===cls.toLowerCase()));
+      let u=DATA.users.find(x=>String(x.username||'').toLowerCase()===username.toLowerCase());
+      if(!u){
+        if(password.length<4){skipped++;return;}
+        const id=Math.max(0,...DATA.users.map(x=>Number(x.id)||0))+1;
+        u={id,username,password,displayName:parentName,role:'Parent',linkedStudentIds:[],access:[...DEFAULT_ACCESS.Parent]};
+        DATA.users.push(u);created++;
+      }else{
+        if(u.role!=='Parent'){skipped++;return;}
+        u.displayName=parentName;if(password)u.password=password;if(!Array.isArray(u.linkedStudentIds))u.linkedStudentIds=[];updated++;
+      }
+      if(st && !u.linkedStudentIds.includes(Number(st.id))){u.linkedStudentIds.push(Number(st.id));linked++;}
+    });
+    if(!saveData()){const m=document.getElementById('parentImportMsg');m.className='msg err';m.textContent='Parent accounts could not be saved: '+(LAST_SAVE_ERROR||'storage error');return;}
+    const msg=document.getElementById('parentImportMsg');msg.className='msg ok';msg.textContent=`Parent accounts: ${created} new, ${updated} updated; ${linked} student link(s) added${skipped?`; ${skipped} row(s) skipped`:''}.`;renderView();
+  },'parentImportMsg');
 }
 
 /* ---------------- Actions ---------------- */
@@ -3236,6 +3693,43 @@ function importStudentsData(){
     });
     saveData(); const msg=document.getElementById('studentImportMsg'); msg.className='msg ok'; msg.textContent=`Loaded ${count} student/parent record(s): ${created} new, ${updated} updated.`; renderView();
   },'studentImportMsg');
+}
+
+function importTimetableData(){
+  const allowed=USER.role==='Admin'||USER.role==='Teacher'||(USER.role!=='Parent'&&USER.access.includes('timetable'));
+  if(!allowed) return;
+  const file=document.getElementById('timetableFile')?.files?.[0];
+  readSheet(file,rows=>{
+    let created=0,updated=0,skipped=0;
+    rows.forEach(row=>{
+      const cls=String(pick(row,['Class','Class Section','Class / Section'])).trim()||'General';
+      const time=String(pick(row,['Time','Period','Period Time'])).trim();
+      if(!time){skipped++;return;}
+      const rec={
+        cls,
+        time,
+        mon:String(pick(row,['Monday','Mon'])).trim(),
+        tue:String(pick(row,['Tuesday','Tue'])).trim(),
+        wed:String(pick(row,['Wednesday','Wed'])).trim(),
+        thu:String(pick(row,['Thursday','Thu'])).trim(),
+        fri:String(pick(row,['Friday','Fri'])).trim()
+      };
+      const existing=DATA.timetable.find(x=>
+        String(x.cls||'General').trim().toLowerCase()===cls.toLowerCase() &&
+        String(x.time||'').trim().toLowerCase()===time.toLowerCase()
+      );
+      if(existing){Object.assign(existing,rec);updated++;}
+      else{DATA.timetable.push(rec);created++;}
+    });
+    if(!saveData()){
+      const msg=document.getElementById('timetableImportMsg');
+      if(msg){msg.className='msg err';msg.textContent='Timetable could not be saved: '+(LAST_SAVE_ERROR||'storage error');}
+      return;
+    }
+    const msg=document.getElementById('timetableImportMsg');
+    if(msg){msg.className='msg ok';msg.textContent=`Timetable: ${created} new row(s), ${updated} updated${skipped?`; ${skipped} skipped`:''}.`;}
+    renderView();
+  },'timetableImportMsg');
 }
 
 function saveTimetableRow(){
@@ -3821,6 +4315,13 @@ function printReportCard(id){
   </div>`;
   doPrint(html);
 }
+
+/* Initialize chat persistence before restoring the signed-in session. */
+initChatStore();
+
+/* Restore an authenticated tab after refresh. No voice/welcome animation is replayed. */
+restorePortalSession();
+
 </script>
 </body>
 </html>
