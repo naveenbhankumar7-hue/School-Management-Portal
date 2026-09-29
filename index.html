@@ -1974,7 +1974,8 @@ const SEED = {
   users:[
     {id:1,username:"admin",password:"admin",displayName:"Administrator",role:"Admin",access:[...DEFAULT_ACCESS.Admin]},
     {id:2,username:"teacher",password:"teacher",displayName:"Mrs. Anita Verma",role:"Teacher",access:[...DEFAULT_ACCESS.Teacher]},
-    {id:3,username:"parent",password:"parent",displayName:"Rohit Mehta (Parent)",role:"Parent",linkedStudentIds:[1],access:[...DEFAULT_ACCESS.Parent]}
+    {id:3,username:"parent",password:"parent",displayName:"Rohit Mehta (Parent)",role:"Parent",linkedStudentIds:[1],access:[...DEFAULT_ACCESS.Parent]},
+    {id:4,username:"teacher1",password:"1234",displayName:"Teacher 1",role:"Teacher",access:[...DEFAULT_ACCESS.Teacher]}
   ],
   students:[
     {id:1,name:"Aarav Mehta",cls:"6-A",feeDue:4200,monthlyFee:2500,attendance:"92%",guardian:"Rohit Mehta",guardianPhone:"9876543210",studentCode:"STU-001"},
@@ -2128,6 +2129,22 @@ function normalizeData(){
   if(typeof DATA.biometric.apiUrl!=='string') DATA.biometric.apiUrl='';
 
   const validRoles=Object.keys(DEFAULT_ACCESS);
+
+  /* Guaranteed starter Teacher account.
+     Existing browser data may have been created before this account existed,
+     so add it automatically when missing. The Admin can update it later. */
+  if(!DATA.users.some(u=>String(u.username||'').trim().toLowerCase()==='teacher1')){
+    const nextUserId=Math.max(0,...DATA.users.map(u=>Number(u.id)||0))+1;
+    DATA.users.push({
+      id:nextUserId,
+      username:'teacher1',
+      password:'1234',
+      displayName:'Teacher 1',
+      role:'Teacher',
+      access:[...DEFAULT_ACCESS.Teacher]
+    });
+  }
+
   DATA.users.forEach((u,i)=>{
     if(!Number.isFinite(Number(u.id))) u.id=i+1;
     u.id=Number(u.id);
@@ -2936,6 +2953,10 @@ const VIEWS = {
       <div class="form-grid"><div><label>Display name</label><input id="uName"></div><div><label>Username</label><input id="uUser"></div><div><label>Password</label><input id="uPass" type="password"></div><div><label>Role</label><select id="uRole" onchange="prefillAccess()">${roleOpts}</select></div></div>
       <div style="margin-top:12px"><label style="font-size:12px;color:var(--ink-soft)">Section access</label><div class="chk-list" id="newAccessList"></div></div>
       <button class="btn" style="margin-top:6px" onclick="addUser()">Create user</button><div id="userMsg" class="msg"></div></div>
+      <div class="card" style="margin:0 0 14px;padding:13px 15px">
+        <strong style="font-size:13px">Starter Teacher Login</strong>
+        <div class="muted" style="margin-top:4px">Username: <b>teacher1</b> &nbsp; Password: <b>1234</b> — you can change the password and module access below.</div>
+      </div>
       <h3 style="font-size:16px;margin-bottom:6px">Existing users</h3>`;
     DATA.users.forEach(u=>{
       const lock=(u.id===USER.id);
