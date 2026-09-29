@@ -2091,6 +2091,25 @@ function saveData(){
     return false;
   }
 }
+
+/* Reload the freshest portal data before login.
+   This fixes login from another already-open browser tab after an Admin
+   creates or changes a user account in the first tab. */
+function reloadPortalData(){
+  try{
+    const raw=localStorage.getItem('vidyalaya_data_v5');
+    if(!raw) return false;
+    const parsed=JSON.parse(raw);
+    if(!parsed || typeof parsed!=='object' || !Array.isArray(parsed.users)) return false;
+    DATA=parsed;
+    normalizeData();
+    return true;
+  }catch(e){
+    console.warn('Latest portal data could not be reloaded.',e);
+    return false;
+  }
+}
+
 let DATA = loadData();
 let USER = null, CURRENT = 'dashboard';
 const canEdit = roles => !!USER && roles.includes(USER.role);
@@ -2274,6 +2293,25 @@ function readSheet(file, done, msgId){
   reader.readAsArrayBuffer(file);
 }
 
+
+/* Keep open portal tabs synchronized with account changes made elsewhere. */
+window.addEventListener('storage',function(e){
+  if(e.key!=='vidyalaya_data_v5' || !e.newValue) return;
+  try{
+    const latest=JSON.parse(e.newValue);
+    if(!latest || typeof latest!=='object' || !Array.isArray(latest.users)) return;
+
+    // Never replace the active user's object in the middle of a mutation.
+    // On the login screen we can safely refresh immediately.
+    if(!USER){
+      DATA=latest;
+      normalizeData();
+    }
+  }catch(err){
+    console.warn('Cross-tab portal update could not be applied.',err);
+  }
+});
+
 /* ---------------- Auth ---------------- *//* ---------------- Auth ---------------- */
 let welcomeTimers=[];
 
@@ -2373,10 +2411,30 @@ function showWelcomeSequence(){
 function doSignIn(e){
   e.preventDefault();
   const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  const found = DATA.users.find(x=>x.username.toLowerCase()===u.toLowerCase() && x.password===p);
+  const p = document.getElementById('loginPass').value.trim();
   const msg = document.getElementById('loginMsg');
-  if(!found){ msg.textContent = "Incorrect username or password."; return false; }
+
+  if(!u || !p){
+    msg.className='msg err';
+    msg.textContent='Enter username and password.';
+    return false;
+  }
+
+  // Always authenticate against the newest saved account list.
+  reloadPortalData();
+
+  const loginName=u.toLowerCase();
+  const found = DATA.users.find(x=>
+    String(x.username||'').trim().toLowerCase()===loginName &&
+    String(x.password??'').trim()===p
+  );
+
+  if(!found){
+    msg.className='msg err';
+    msg.textContent = "Incorrect username or password.";
+    return false;
+  }
+  msg.className='msg';
   msg.textContent='';
   USER = found;
   processMonthlyFees();
@@ -3218,7 +3276,21 @@ function changePassword(){
   document.getElementById('curPass').value=document.getElementById('newPass').value=document.getElementById('confPass').value='';
 }
 function adminResetPassword(userId){
-  if(USER.role!=='Admin') return; const u=DATA.users.find(x=>x.id===userId),el=document.getElementById('resetPass'+userId); if(!u||!el)return; const pw=el.value; if(pw.length<4){alert('Password must be at least 4 characters.');return;} u.password=pw;saveData();el.value='';alert('Password updated for '+u.displayName+'.');
+  if(!USER || USER.role!=='Admin') return;
+  const u=DATA.users.find(x=>x.id===Number(userId));
+  const el=document.getElementById('resetPass'+userId);
+  if(!u||!el)return;
+  const pw=el.value.trim();
+  if(pw.length<4){alert('Password must be at least 4 characters.');return;}
+  const old=u.password;
+  u.password=pw;
+  if(!saveData()){
+    u.password=old;
+    alert('Password could not be saved. '+(LAST_SAVE_ERROR||'Browser storage error.'));
+    return;
+  }
+  el.value='';
+  alert('Password updated for '+u.displayName+'.');
 }
 function prefillAccess(){
   const roleEl = document.getElementById('uRole'), list = document.getElementById('newAccessList');
@@ -3233,22 +3305,82 @@ function setParentLinks(userId,selectEl){
   saveData();
 }
 function addUser(){
-  if(USER.role!=='Admin') return;
+  if(!USER || USER.role!=='Admin') return;
+
   const name=document.getElementById('uName').value.trim();
   const uname=document.getElementById('uUser').value.trim();
-  const pass=document.getElementById('uPass').value;
+  const pass=document.getElementById('uPass').value.trim();
   const role=document.getElementById('uRole').value;
   const msg=document.getElementById('userMsg');
-  if(!name || !uname || !pass){ msg.className='msg err'; msg.textContent='Please fill in all fields.'; return; }
-  if(pass.length<4){msg.className='msg err';msg.textContent='Password must be at least 4 characters.';return;}
-  if(DATA.users.some(u=>u.username.toLowerCase()===uname.toLowerCase())){ msg.className='msg err'; msg.textContent='That username is already taken.'; return; }
-  const access=[...new Set(['dashboard',...Array.from(document.querySelectorAll('#newAccessList input:checked')).map(c=>c.value)])];
+
+  if(!name || !uname || !pass){
+    msg.className='msg err';
+    msg.textContent='Please fill in display name, username and password.';
+    return;
+  }
+  if(uname.length<3){
+    msg.className='msg err';
+    msg.textContent='Username must be at least 3 characters.';
+    return;
+  }
+  if(!/^[A-Za-z0-9._-]+$/.test(uname)){
+    msg.className='msg err';
+    msg.textContent='Username can use letters, numbers, dot, underscore and hyphen only.';
+    return;
+  }
+  if(pass.length<4){
+    msg.className='msg err';
+    msg.textContent='Password must be at least 4 characters.';
+    return;
+  }
+  if(!DEFAULT_ACCESS[role]){
+    msg.className='msg err';
+    msg.textContent='Choose a valid user role.';
+    return;
+  }
+  if(DATA.users.some(u=>String(u.username||'').trim().toLowerCase()===uname.toLowerCase())){
+    msg.className='msg err';
+    msg.textContent='That username is already taken.';
+    return;
+  }
+
+  const access=[...new Set([
+    'dashboard',
+    ...Array.from(document.querySelectorAll('#newAccessList input:checked')).map(c=>c.value)
+  ])];
+
   const id=Math.max(0,...DATA.users.map(u=>Number(u.id)||0))+1;
-  DATA.users.push({id,username:uname,password:pass,displayName:name,role,linkedStudentIds:role==='Parent'?[]:undefined,access});
-  saveData();
-  msg.className='msg ok'; msg.textContent='User created.';
-  document.getElementById('uName').value=document.getElementById('uUser').value=document.getElementById('uPass').value='';
+  const newUser={
+    id,
+    username:uname,
+    password:pass,
+    displayName:name,
+    role,
+    linkedStudentIds:role==='Parent'?[]:undefined,
+    access
+  };
+
+  DATA.users.push(newUser);
+
+  if(!saveData()){
+    DATA.users=DATA.users.filter(u=>u!==newUser);
+    msg.className='msg err';
+    msg.textContent='User could not be saved. Browser storage may be full. '+(LAST_SAVE_ERROR||'');
+    return;
+  }
+
+  document.getElementById('uName').value='';
+  document.getElementById('uUser').value='';
+  document.getElementById('uPass').value='';
+
+  // Re-render so the newly created account is immediately visible.
   renderView();
+
+  const freshMsg=document.getElementById('userMsg');
+  if(freshMsg){
+    freshMsg.className='msg ok';
+    freshMsg.textContent='User created successfully. Username: '+uname;
+  }
 }
 function toggleUserAccess(userId, key, checked){
   if(USER.role!=='Admin') return;
