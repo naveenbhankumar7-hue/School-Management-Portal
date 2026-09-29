@@ -924,6 +924,439 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
 @media (max-width:680px){#app{grid-template-columns:1fr}#sidebar{height:auto;position:relative}.module-grid{grid-template-columns:1fr 1fr}.chat-row{max-width:90%}.welcome-headline{font-size:36px}.welcome-user{font-size:34px}}
 @media (max-width:480px){.module-grid{grid-template-columns:1fr}.module-search{min-width:100%}}
 
+
+/* =========================================================
+   USER-SELECTABLE ERP THEMES
+   Theme values are scoped to #app, so the shooting-star
+   login screen remains unchanged.
+   ========================================================= */
+
+:root[data-app-theme="classic"] #app{
+  --navy:#274f87;
+  --navy-deep:#12264a;
+  --gold:#ffc067;
+  --paper:#fff8ed;
+  --panel:#ffffff;
+  --panel-soft:#fff4e1;
+  --ink:#1f2a44;
+  --ink-soft:#6e7790;
+  --line:#eadcc8;
+  --theme-primary:#274f87;
+  --theme-deep:#12264a;
+  --theme-accent:#ffc067;
+  --theme-bg:#fff8ed;
+  --theme-panel:#ffffff;
+  --theme-soft:#fff4e1;
+  --theme-text:#1f2a44;
+  --theme-muted:#6e7790;
+  --theme-border:#eadcc8;
+  --theme-glow:#ffd99f;
+  --theme-sidebar-text:#eaf1fb;
+  --theme-sidebar-muted:#a9bad3;
+  --theme-active-bg:rgba(255,192,103,.18);
+  --theme-sidebar-hover:rgba(255,255,255,.08);
+}
+
+:root[data-app-theme="royal"] #app{
+  --navy:#2563eb;
+  --navy-deep:#1e3a8a;
+  --gold:#38bdf8;
+  --paper:#f4f8ff;
+  --panel:#ffffff;
+  --panel-soft:#edf5ff;
+  --ink:#172554;
+  --ink-soft:#64748b;
+  --line:#cfdef5;
+  --theme-primary:#2563eb;
+  --theme-deep:#1e3a8a;
+  --theme-accent:#38bdf8;
+  --theme-bg:#f4f8ff;
+  --theme-panel:#ffffff;
+  --theme-soft:#edf5ff;
+  --theme-text:#172554;
+  --theme-muted:#64748b;
+  --theme-border:#cfdef5;
+  --theme-glow:#cfe8ff;
+  --theme-sidebar-text:#eef6ff;
+  --theme-sidebar-muted:#b4c9ea;
+  --theme-active-bg:rgba(56,189,248,.18);
+  --theme-sidebar-hover:rgba(255,255,255,.09);
+}
+
+:root[data-app-theme="emerald"] #app{
+  --navy:#448811;
+  --navy-deep:#234d16;
+  --gold:#a3d65c;
+  --paper:#f5f9f1;
+  --panel:#ffffff;
+  --panel-soft:#eef6e9;
+  --ink:#20311d;
+  --ink-soft:#667760;
+  --line:#d5e4cc;
+  --theme-primary:#448811;
+  --theme-deep:#234d16;
+  --theme-accent:#a3d65c;
+  --theme-bg:#f5f9f1;
+  --theme-panel:#ffffff;
+  --theme-soft:#eef6e9;
+  --theme-text:#20311d;
+  --theme-muted:#667760;
+  --theme-border:#d5e4cc;
+  --theme-glow:#d9efc5;
+  --theme-sidebar-text:#f0f8eb;
+  --theme-sidebar-muted:#bfd2b5;
+  --theme-active-bg:rgba(163,214,92,.20);
+  --theme-sidebar-hover:rgba(255,255,255,.09);
+}
+
+:root[data-app-theme="violet"] #app{
+  --navy:#7c3aed;
+  --navy-deep:#4c1d95;
+  --gold:#c084fc;
+  --paper:#faf7ff;
+  --panel:#ffffff;
+  --panel-soft:#f5efff;
+  --ink:#30223f;
+  --ink-soft:#776984;
+  --line:#e4d6f4;
+  --theme-primary:#7c3aed;
+  --theme-deep:#4c1d95;
+  --theme-accent:#c084fc;
+  --theme-bg:#faf7ff;
+  --theme-panel:#ffffff;
+  --theme-soft:#f5efff;
+  --theme-text:#30223f;
+  --theme-muted:#776984;
+  --theme-border:#e4d6f4;
+  --theme-glow:#ead7ff;
+  --theme-sidebar-text:#f7efff;
+  --theme-sidebar-muted:#cdb9e4;
+  --theme-active-bg:rgba(192,132,252,.20);
+  --theme-sidebar-hover:rgba(255,255,255,.09);
+}
+
+:root[data-app-theme="midnight"] #app{
+  --navy:#3b82f6;
+  --navy-deep:#081426;
+  --gold:#22d3ee;
+  --paper:#07111f;
+  --panel:#0f1d2f;
+  --panel-soft:#13243a;
+  --ink:#edf5ff;
+  --ink-soft:#9fb3cb;
+  --line:#29405c;
+  --theme-primary:#3b82f6;
+  --theme-deep:#07111f;
+  --theme-accent:#22d3ee;
+  --theme-bg:#07111f;
+  --theme-panel:#0f1d2f;
+  --theme-soft:#13243a;
+  --theme-text:#edf5ff;
+  --theme-muted:#9fb3cb;
+  --theme-border:#29405c;
+  --theme-glow:#102c4d;
+  --theme-sidebar-text:#e7f2ff;
+  --theme-sidebar-muted:#8fa8c5;
+  --theme-active-bg:rgba(34,211,238,.15);
+  --theme-sidebar-hover:rgba(255,255,255,.07);
+}
+
+/* Core workspace */
+:root[data-app-theme] #app{
+  background:var(--theme-bg) !important;
+  color:var(--theme-text);
+  transition:background .28s ease,color .28s ease;
+}
+
+:root[data-app-theme] #app main{
+  background:linear-gradient(135deg,var(--theme-bg) 0%,var(--theme-soft) 58%,var(--theme-glow) 155%) !important;
+  color:var(--theme-text);
+  transition:background .28s ease;
+}
+
+:root[data-app-theme] #app #sidebar{
+  background:linear-gradient(180deg,var(--theme-deep) 0%,color-mix(in srgb,var(--theme-deep) 83%,#000 17%) 100%) !important;
+  color:var(--theme-sidebar-text);
+}
+
+:root[data-app-theme] #app #sidebar .brand{color:var(--theme-accent) !important}
+:root[data-app-theme] #app #sidebar .who{
+  background:rgba(255,255,255,.07) !important;
+  color:var(--theme-sidebar-text) !important;
+}
+:root[data-app-theme] #app .sidebar-panel p{color:var(--theme-sidebar-muted) !important}
+:root[data-app-theme] #app .navitem{color:var(--theme-sidebar-text) !important}
+:root[data-app-theme] #app .navitem:hover{background:var(--theme-sidebar-hover) !important}
+:root[data-app-theme] #app .navitem.active{
+  background:var(--theme-active-bg) !important;
+  border-left-color:var(--theme-accent) !important;
+  color:#fff !important;
+}
+:root[data-app-theme] #app #logout{
+  background:rgba(255,255,255,.07) !important;
+  border-color:rgba(255,255,255,.12) !important;
+  color:var(--theme-sidebar-text) !important;
+}
+
+/* Theme selector */
+.theme-picker{
+  min-width:190px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 11px;
+  border-radius:15px;
+  background:var(--theme-panel,#fff);
+  border:1px solid var(--theme-border,#ddd);
+  box-shadow:0 8px 22px rgba(31,42,68,.08);
+}
+.theme-picker-icon{
+  width:34px;height:34px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  background:var(--theme-soft,#f5f5f5);
+  font-size:17px;
+  flex:0 0 auto;
+}
+.theme-picker-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.theme-picker-copy small{
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.12em;
+  color:var(--theme-muted,#667085);
+}
+.theme-picker select{
+  width:100%;
+  min-width:135px;
+  border:0;
+  padding:2px 22px 2px 0;
+  border-radius:0;
+  background:transparent;
+  color:var(--theme-text,#1f2a44);
+  font-size:12px;
+  font-weight:800;
+  box-shadow:none;
+  outline:none;
+  cursor:pointer;
+}
+
+/* Dashboard surfaces */
+:root[data-app-theme] #app .card,
+:root[data-app-theme] #app .home-hero-card,
+:root[data-app-theme] #app .home-side-stat,
+:root[data-app-theme] #app .quick-card,
+:root[data-app-theme] #app .module-card,
+:root[data-app-theme] #app .notice-board-card,
+:root[data-app-theme] #app .chat-contacts,
+:root[data-app-theme] #app .chat-panel{
+  background:linear-gradient(180deg,var(--theme-panel) 0%,var(--theme-soft) 145%) !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-text) !important;
+  box-shadow:0 12px 30px color-mix(in srgb,var(--theme-deep) 10%,transparent) !important;
+}
+
+:root[data-app-theme] #app h1,
+:root[data-app-theme] #app h2,
+:root[data-app-theme] #app h3,
+:root[data-app-theme] #app .home-hero-card h3,
+:root[data-app-theme] #app .notice-card strong,
+:root[data-app-theme] #app .notice-entry strong,
+:root[data-app-theme] #app .module-card strong,
+:root[data-app-theme] #app .chat-header strong{
+  color:var(--theme-text) !important;
+}
+
+:root[data-app-theme] #app .page-head small,
+:root[data-app-theme] #app .muted,
+:root[data-app-theme] #app .home-hero-card p,
+:root[data-app-theme] #app .home-side-stat .sub,
+:root[data-app-theme] #app .quick-card .caption,
+:root[data-app-theme] #app .notice-card p,
+:root[data-app-theme] #app .notice-entry p,
+:root[data-app-theme] #app .module-card small{
+  color:var(--theme-muted) !important;
+}
+
+:root[data-app-theme] #app .stat .num,
+:root[data-app-theme] #app .home-side-stat .big,
+:root[data-app-theme] #app .quick-card .value,
+:root[data-app-theme] #app .holiday-date{
+  color:var(--theme-primary) !important;
+}
+
+:root[data-app-theme] #app .section h2{
+  border-bottom-color:var(--theme-accent) !important;
+}
+
+:root[data-app-theme] #app .eyebrow{
+  background:color-mix(in srgb,var(--theme-accent) 22%,transparent) !important;
+  color:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .chip,
+:root[data-app-theme] #app .hero-badges .chip{
+  background:var(--theme-panel) !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-primary) !important;
+}
+
+/* Controls */
+:root[data-app-theme] #app input,
+:root[data-app-theme] #app select,
+:root[data-app-theme] #app textarea{
+  background:var(--theme-panel);
+  border-color:var(--theme-border);
+  color:var(--theme-text);
+}
+:root[data-app-theme] #app input:focus,
+:root[data-app-theme] #app select:focus,
+:root[data-app-theme] #app textarea:focus{
+  border-color:var(--theme-primary) !important;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--theme-primary) 13%,transparent) !important;
+}
+:root[data-app-theme] #app .btn{
+  background:linear-gradient(135deg,var(--theme-primary) 0%,var(--theme-deep) 100%);
+}
+:root[data-app-theme] #app .btn.gold{
+  background:linear-gradient(135deg,var(--theme-accent) 0%,var(--theme-primary) 100%);
+}
+:root[data-app-theme] #app .btn.ghost{
+  background:transparent !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-text) !important;
+}
+
+/* Modules */
+:root[data-app-theme] #app .module-search input{
+  background:var(--theme-panel) !important;
+  border-color:var(--theme-border) !important;
+}
+:root[data-app-theme] #app .module-search::before{color:var(--theme-primary) !important}
+:root[data-app-theme] #app .module-filter{
+  background:var(--theme-panel) !important;
+  color:var(--theme-muted) !important;
+  border-color:var(--theme-border) !important;
+}
+:root[data-app-theme] #app .module-filter.active{
+  background:var(--theme-primary) !important;
+  border-color:var(--theme-primary) !important;
+  color:#fff !important;
+}
+:root[data-app-theme] #app .module-section-title{color:var(--theme-primary) !important}
+:root[data-app-theme] #app .module-card-icon{
+  background:linear-gradient(135deg,var(--theme-soft),color-mix(in srgb,var(--theme-accent) 45%,var(--theme-soft))) !important;
+  border:1px solid var(--theme-border);
+}
+:root[data-app-theme] #app .module-card:hover{
+  border-color:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .module-card .live-pill{
+  background:color-mix(in srgb,var(--theme-accent) 20%,var(--theme-panel)) !important;
+  color:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .modules-empty{
+  background:var(--theme-panel) !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-muted) !important;
+}
+
+/* Bulletin */
+:root[data-app-theme] #app .bulletin-bar{
+  background:linear-gradient(90deg,var(--theme-deep) 0%,var(--theme-primary) 100%) !important;
+  border-color:var(--theme-border) !important;
+}
+:root[data-app-theme] #app .bulletin-label{
+  background:linear-gradient(135deg,var(--theme-accent) 0%,var(--theme-primary) 115%) !important;
+  color:#fff !important;
+}
+:root[data-app-theme] #app .bulletin-dot{background:var(--theme-accent) !important}
+
+/* Chat */
+:root[data-app-theme] #app .chat-user-btn,
+:root[data-app-theme] #app .chat-header,
+:root[data-app-theme] #app .chat-thread,
+:root[data-app-theme] #app .chat-compose,
+:root[data-app-theme] #app .chat-bubble{
+  background:var(--theme-panel) !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-text) !important;
+}
+:root[data-app-theme] #app .chat-user-btn:hover,
+:root[data-app-theme] #app .chat-user-btn.active{
+  background:var(--theme-soft) !important;
+  border-color:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .chat-avatar{
+  background:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .chat-row.mine .chat-bubble{
+  background:var(--theme-primary) !important;
+  color:#fff !important;
+  border-color:var(--theme-primary) !important;
+}
+:root[data-app-theme] #app .chat-file-btn{
+  background:var(--theme-panel) !important;
+  border-color:var(--theme-border) !important;
+  color:var(--theme-primary) !important;
+}
+
+/* Tables, notices and footer */
+:root[data-app-theme] #app th{color:var(--theme-muted) !important}
+:root[data-app-theme] #app td{
+  color:var(--theme-text);
+  border-bottom-color:var(--theme-border) !important;
+}
+:root[data-app-theme] #app .notice-entry,
+:root[data-app-theme] #app .holiday-row,
+:root[data-app-theme] #app .userRow{
+  border-bottom-color:var(--theme-border) !important;
+}
+:root[data-app-theme] #app .holiday-name{color:var(--theme-text) !important}
+:root[data-app-theme] #app .workspace-footer{
+  background:var(--theme-deep) !important;
+  border:1px solid color-mix(in srgb,var(--theme-border) 50%,transparent);
+}
+:root[data-app-theme] #app .workspace-footer small{color:var(--theme-sidebar-muted) !important}
+
+/* Midnight-specific contrast refinements */
+:root[data-app-theme="midnight"] #app .theme-picker{
+  background:#0f1d2f;
+  border-color:#29405c;
+  box-shadow:0 10px 26px rgba(0,0,0,.28);
+}
+:root[data-app-theme="midnight"] #app input::placeholder,
+:root[data-app-theme="midnight"] #app textarea::placeholder{color:#7188a3}
+:root[data-app-theme="midnight"] #app .tag.neutral{
+  background:rgba(159,179,203,.12);
+  color:#b8c9dc;
+}
+:root[data-app-theme="midnight"] #app .tag.good{
+  background:rgba(35,129,93,.18);
+  color:#72e0b0;
+}
+:root[data-app-theme="midnight"] #app .tag.warn{
+  background:rgba(245,158,11,.15);
+  color:#f6c66c;
+}
+
+/* Smooth visual change */
+:root[data-app-theme] #app main,
+:root[data-app-theme] #app #sidebar,
+:root[data-app-theme] #app .card,
+:root[data-app-theme] #app .module-card,
+:root[data-app-theme] #app .notice-board-card,
+:root[data-app-theme] #app .chat-panel,
+:root[data-app-theme] #app .chat-contacts,
+:root[data-app-theme] #app .theme-picker{
+  transition:background .28s ease,border-color .28s ease,color .28s ease,box-shadow .28s ease;
+}
+
+@media (max-width:680px){
+  .theme-picker{width:100%;min-width:0}
+  .theme-picker select{min-width:0}
+}
+
+
 /* ---- Print ---- */
 #printArea{display:none}
 .slip{max-width:560px;margin:0 auto;font-family:Georgia,serif;color:#111}
@@ -1428,7 +1861,19 @@ main{background:linear-gradient(135deg,#fff8ed 0%,#fff3df 54%,#ffd99f 145%)}
         <h2 id="pageTitle" style="border:none;font-size:28px;margin:0"></h2>
         <small id="pageSubTitle">A clean and simple school operations dashboard.</small>
       </div>
-      <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">☾ Dark mode</button>
+      <div class="theme-picker" title="Choose your ERP theme">
+        <span class="theme-picker-icon" aria-hidden="true">🎨</span>
+        <div class="theme-picker-copy">
+          <small>APPEARANCE</small>
+          <select id="themeSelect" onchange="changeAppTheme(this.value)" aria-label="Choose ERP theme">
+            <option value="classic">Classic Gold</option>
+            <option value="royal">Royal Blue</option>
+            <option value="emerald">Emerald Green</option>
+            <option value="violet">Violet Bloom</option>
+            <option value="midnight">Midnight</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div id="view"></div>
   </main>
@@ -1825,6 +2270,7 @@ function clearWelcomeSequence(){
   if(overlay) overlay.hidden=true;
 }
 function openWorkspace(){
+  loadUserTheme();
   document.getElementById('app').classList.add('on');
   document.getElementById('whoLabel').textContent = USER.displayName + " · " + USER.role;
   CURRENT = 'dashboard';
@@ -1872,29 +2318,54 @@ function signOut(){
   document.getElementById('loginUser').value=''; document.getElementById('loginPass').value='';
   document.getElementById('loginMsg').textContent='';
 }
-function updateThemeToggleLabel(){
-  const btn=document.getElementById('themeToggle');
-  if(!btn) return;
-  const dark=document.documentElement.getAttribute('data-theme')==='dark';
-  btn.textContent=dark?'☀ Light mode':'☾ Dark mode';
-  btn.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');
+const APP_THEMES = {
+  classic:{label:'Classic Gold'},
+  royal:{label:'Royal Blue'},
+  emerald:{label:'Emerald Green'},
+  violet:{label:'Violet Bloom'},
+  midnight:{label:'Midnight'}
+};
+
+function themeStorageKey(){
+  const account=(USER && USER.username) ? String(USER.username).toLowerCase() : 'default';
+  return 'vidyalaya_app_theme_'+account;
 }
-function setTheme(theme){
-  const value=theme==='dark'?'dark':'light';
-  document.documentElement.setAttribute('data-theme',value);
-  try{localStorage.setItem('vidyalaya_theme',value);}catch(e){}
-  updateThemeToggleLabel();
+
+function applyAppTheme(theme,persist=true){
+  const value=APP_THEMES[theme] ? theme : 'classic';
+
+  // Keep the legacy dark/light stylesheet disabled. The new themes control
+  // the ERP workspace themselves and do not affect the shooting-star login.
+  document.documentElement.setAttribute('data-theme','light');
+  document.documentElement.setAttribute('data-app-theme',value);
+
+  const select=document.getElementById('themeSelect');
+  if(select && select.value!==value) select.value=value;
+
+  if(persist){
+    try{
+      localStorage.setItem(themeStorageKey(),value);
+    }catch(e){}
+  }
+  return value;
 }
-function toggleTheme(){
-  const current=document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';
-  setTheme(current==='dark'?'light':'dark');
+
+function changeAppTheme(theme){
+  applyAppTheme(theme,true);
 }
+
+function loadUserTheme(){
+  let saved='classic';
+  try{
+    saved=localStorage.getItem(themeStorageKey()) || 'classic';
+  }catch(e){}
+  applyAppTheme(saved,false);
+}
+
+/* Apply a neutral default until a user signs in. */
 (function initTheme(){
-  let saved='light';
-  try{saved=localStorage.getItem('vidyalaya_theme')||'light';}catch(e){}
-  document.documentElement.setAttribute('data-theme',saved==='dark'?'dark':'light');
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',updateThemeToggleLabel);
-  else updateThemeToggleLabel();
+  document.documentElement.setAttribute('data-theme','light');
+  document.documentElement.setAttribute('data-app-theme','classic');
 })();
 
 /* ---------------- Nav ---------------- */
@@ -2127,7 +2598,7 @@ const VIEWS = {
           <div><label>Student (from portal)</label><select id="libStudent">${studentOptions()}</select></div>
           <div><label>Due date</label><input id="libDue" placeholder="e.g. 30 Sep"></div>
         </div>
-        <div class="action-row" style="margin-top:10px"><button class="btn" onclick="issueLibraryBook(false)">Issue</button><button class="btn gold" onclick="issueLibraryBook(true)">Issue & Print Slip</button></div>
+        <div class="action-row" style="margin-top:10px"><button class="btn" onclick="issueLibraryBook(false)">Issue</button><button class="btn gold" onclick="issueLibraryBook(true)">Issue & Print Receipt</button></div>
       </div>`;
     }
     h+=`<div class="section"><h2>Inventory</h2>${tbl(['Accession No','Title','Author','Category','Available / Total'], DATA.library.map(b=>[
@@ -2137,9 +2608,15 @@ const VIEWS = {
     const txSource=USER.role==='Parent'?DATA.libraryTransactions.filter(tx=>allowedStudentIds.has(Number(tx.studentId))):DATA.libraryTransactions;
     const txRows=[...txSource].reverse().map(tx=>[
       esc(tx.id),esc(tx.studentName||'—'),esc(tx.title||'—'),esc(tx.issueDate||'—'),esc(tx.dueDate||'—'),esc(tx.returnDate||'—'),`<span class="tag ${tx.status==='Returned'?'good':'warn'}">${esc(tx.status)}</span>`,
-      `<div class="action-row">${editable&&tx.status==='Issued'?`<button class="btn sm" onclick="returnLibraryBook(${tx.id})">IN / Return</button>`:''}<button class="btn ghost sm" onclick="printLibrarySlip(${tx.id})">Print Slip</button></div>`
+      `<div class="action-row">${editable&&tx.status==='Issued'?`<button class="btn sm" onclick="returnLibraryBook(${tx.id})">IN / Return</button>`:''}<button class="btn ghost sm" onclick="printLibraryReceipt(${tx.id})">🧾 Print Receipt</button></div>`
     ]);
-    h+=`<div class="section"><h2>Library IN / OUT Register</h2>${tbl(['Txn #','Student','Book','Issue Date','Due Date','Return Date','Status',''],txRows)}</div>`;
+    h+=`<div class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <h2 style="margin-bottom:0">Library IN / OUT Register</h2>
+        <button class="btn ghost sm" onclick="printLibraryRegister()">🖨 Print Register</button>
+      </div>
+      ${tbl(['Txn #','Student','Book','Issue Date','Due Date','Return Date','Status',''],txRows)}
+    </div>`;
     return '<div class="section">'+h+'</div>';
   },
 
@@ -2627,7 +3104,7 @@ function importLibraryBooks(){
 }
 function issueLibraryBook(printAfter=false){
   if(!canEdit(['Admin','Librarian']))return; const i=parseInt(document.getElementById('libBook').value),sid=parseInt(document.getElementById('libStudent').value),due=document.getElementById('libDue').value.trim()||'—'; const b=DATA.library[i],st=DATA.students.find(s=>s.id===sid);if(!b||!st)return;if((Number(b.availableCopies)||0)<=0){alert('No available copy.');return;}
-  b.availableCopies=Math.max(0,(Number(b.availableCopies)||0)-1); const tx={id:Math.max(0,...DATA.libraryTransactions.map(x=>x.id||0))+1,accessionNo:b.accessionNo,title:b.title,studentId:st.id,studentName:st.name,studentClass:st.cls,issueDate:new Date().toLocaleDateString(),dueDate:due,returnDate:'',status:'Issued'}; DATA.libraryTransactions.push(tx); saveData(); if(printAfter)printLibrarySlip(tx.id); else renderView();
+  b.availableCopies=Math.max(0,(Number(b.availableCopies)||0)-1); const tx={id:Math.max(0,...DATA.libraryTransactions.map(x=>x.id||0))+1,accessionNo:b.accessionNo,title:b.title,studentId:st.id,studentName:st.name,studentClass:st.cls,issueDate:new Date().toLocaleDateString(),dueDate:due,returnDate:'',status:'Issued'}; DATA.libraryTransactions.push(tx); saveData(); if(printAfter)printLibraryReceipt(tx.id); else renderView();
 }
 function returnLibraryBook(txId){
   if(!canEdit(['Admin','Librarian']))return; const tx=DATA.libraryTransactions.find(x=>x.id===txId);if(!tx||tx.status==='Returned')return; const b=DATA.library.find(x=>x.accessionNo===tx.accessionNo);if(b)b.availableCopies=Math.min(Number(b.totalCopies)||1,(Number(b.availableCopies)||0)+1);tx.status='Returned';tx.returnDate=new Date().toLocaleDateString();saveData();renderView();
@@ -2727,13 +3204,162 @@ function printFeeSlip(studentId){
   const html=`<div class="slip"><h2>Vidyalaya School — Fee Slip</h2><p><b>Student:</b> ${esc(s.name)} &nbsp; <b>Class:</b> ${esc(s.cls)} &nbsp; <b>Parent/Guardian:</b> ${esc(s.guardian)}</p><table><thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.note)}</td><td>${esc(r.type)}</td><td>₹${Number(r.amount||0).toLocaleString('en-IN')}</td></tr>`).join(''):'<tr><td colspan="4">No ledger entries yet.</td></tr>'}</tbody></table><p class="total">Current balance due: ₹${Number(s.feeDue||0).toLocaleString('en-IN')}</p><p style="margin-top:30px;font-size:13px;color:#555">Generated ${todayLabel()} · Vidyalaya School Management Portal</p></div>`;
   doPrint(html);
 }
-function printLibrarySlip(txId){
-  const tx=DATA.libraryTransactions.find(x=>x.id===txId); if(!tx)return; if(USER.role==='Parent'&&!canViewStudent(tx.studentId)){alert('You do not have access to this library transaction.');return;} const s=DATA.students.find(x=>x.id===tx.studentId);
-  const html=`<div class="slip"><h2>Vidyalaya School — Library ${tx.status==='Returned'?'Return':'Issue'} Slip</h2>
-    <p><b>Transaction:</b> #${esc(tx.id)} &nbsp; <b>Status:</b> ${esc(tx.status)}</p>
-    <table><tbody><tr><th>Student</th><td>${esc(tx.studentName||'—')}</td></tr><tr><th>Class</th><td>${esc(tx.studentClass||(s?s.cls:'—'))}</td></tr><tr><th>Book</th><td>${esc(tx.title)}</td></tr><tr><th>Accession No</th><td>${esc(tx.accessionNo)}</td></tr><tr><th>Issue Date</th><td>${esc(tx.issueDate)}</td></tr><tr><th>Due Date</th><td>${esc(tx.dueDate)}</td></tr><tr><th>Return Date</th><td>${esc(tx.returnDate||'—')}</td></tr></tbody></table>
-    <p style="margin-top:30px;font-size:13px;color:#555">Generated ${new Date().toLocaleDateString()} · Vidyalaya School Library</p></div>`; doPrint(html);
+function openPrintWindow(content, title='Vidyalaya ERP Print'){
+  if(!content) return false;
+  const printWin=window.open('','_blank','width=900,height=720,noopener=no');
+  if(!printWin){
+    // Fallback for browsers blocking popups.
+    const area=document.getElementById('printArea');
+    if(!area){alert('Printing could not be opened. Please allow pop-ups for this portal.');return false;}
+    area.innerHTML=content;
+    document.body.classList.add('printing');
+    setTimeout(()=>{
+      try{window.print();}finally{setTimeout(()=>document.body.classList.remove('printing'),1200);}
+    },120);
+    return true;
+  }
+
+  const safeTitle=esc(title);
+  printWin.document.open();
+  printWin.document.write(`<!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${safeTitle}</title>
+    <style>
+      *{box-sizing:border-box}
+      body{margin:0;padding:28px;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
+      .receipt{max-width:720px;margin:0 auto;border:1px solid #222;padding:26px 30px}
+      .receipt-head{text-align:center;border-bottom:2px solid #222;padding-bottom:14px;margin-bottom:18px}
+      .receipt-head h1{margin:0 0 5px;font-family:Georgia,serif;font-size:25px}
+      .receipt-head p{margin:3px 0;font-size:12px;color:#444}
+      .receipt-type{display:inline-block;margin-top:9px;padding:6px 12px;border:1px solid #333;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+      .meta{display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;margin:10px 0 16px;font-size:12px}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th,td{border:1px solid #777;padding:9px 10px;text-align:left;font-size:13px;vertical-align:top}
+      th{width:34%;background:#f3f3f3;font-weight:700}
+      .status{font-weight:700}
+      .note{font-size:11px;line-height:1.55;margin:16px 0;color:#444}
+      .signatures{display:grid;grid-template-columns:1fr 1fr;gap:55px;margin-top:54px}
+      .sign{border-top:1px solid #333;text-align:center;padding-top:6px;font-size:12px}
+      .footer{text-align:center;border-top:1px solid #ccc;margin-top:28px;padding-top:10px;font-size:10px;color:#666}
+      .register{max-width:1100px;margin:0 auto}
+      .register h1{text-align:center;font-family:Georgia,serif;margin:0}
+      .register .sub{text-align:center;margin:5px 0 18px;font-size:12px;color:#555}
+      .register table th{width:auto;background:#f1f1f1}
+      .register table th,.register table td{font-size:10px;padding:6px}
+      @page{margin:12mm}
+      @media print{
+        body{padding:0}
+        .receipt{border:1px solid #222}
+      }
+    </style>
+  </head>
+  <body>${content}
+  <script>
+    window.addEventListener('load',function(){
+      setTimeout(function(){ window.focus(); window.print(); },180);
+    });
+  <\/script>
+  </body></html>`);
+  printWin.document.close();
+  return true;
 }
+
+function printLibraryReceipt(txId){
+  const id=Number(txId);
+  const tx=DATA.libraryTransactions.find(x=>Number(x.id)===id);
+  if(!tx){alert('Library transaction not found.');return;}
+  if(USER.role==='Parent'&&!canViewStudent(tx.studentId)){alert('You do not have access to this library transaction.');return;}
+
+  const s=DATA.students.find(x=>Number(x.id)===Number(tx.studentId));
+  const isReturn=String(tx.status).toLowerCase()==='returned';
+  const receiptNo='LIB-'+String(tx.id).padStart(5,'0');
+  const generated=new Date().toLocaleString('en-IN');
+
+  const html=`<div class="receipt">
+    <div class="receipt-head">
+      <h1>Vidyalaya School Library</h1>
+      <p>School Management ERP</p>
+      <span class="receipt-type">${isReturn?'Book Return Receipt':'Book Issue Receipt'}</span>
+    </div>
+
+    <div class="meta">
+      <div><b>Receipt No:</b> ${esc(receiptNo)}</div>
+      <div><b>Transaction #:</b> ${esc(tx.id)}</div>
+      <div><b>Status:</b> <span class="status">${esc(tx.status||'Issued')}</span></div>
+    </div>
+
+    <table>
+      <tbody>
+        <tr><th>Student Name</th><td>${esc(tx.studentName||(s?s.name:'—'))}</td></tr>
+        <tr><th>Class / Section</th><td>${esc(tx.studentClass||(s?s.cls:'—'))}</td></tr>
+        <tr><th>Student ID</th><td>${esc(s?s.studentCode||s.id:tx.studentId||'—')}</td></tr>
+        <tr><th>Book Title</th><td>${esc(tx.title||'—')}</td></tr>
+        <tr><th>Accession / Book ID</th><td>${esc(tx.accessionNo||'—')}</td></tr>
+        <tr><th>Issue Date</th><td>${esc(tx.issueDate||'—')}</td></tr>
+        <tr><th>Due Date</th><td>${esc(tx.dueDate||'—')}</td></tr>
+        <tr><th>Return Date</th><td>${esc(tx.returnDate||'—')}</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      ${isReturn
+        ? 'This receipt confirms that the above library book has been recorded as returned in the Vidyalaya ERP Library Register.'
+        : 'The student is responsible for returning the above book by the due date in appropriate condition.'}
+    </div>
+
+    <div class="signatures">
+      <div class="sign">Student / Parent Signature</div>
+      <div class="sign">Librarian Signature</div>
+    </div>
+
+    <div class="footer">Generated ${esc(generated)} · Vidyalaya ERP Library Portal</div>
+  </div>`;
+
+  openPrintWindow(html, isReturn?'Library Return Receipt':'Library Issue Receipt');
+}
+
+/* Backward-compatible name for any old buttons/data still calling it. */
+function printLibrarySlip(txId){ printLibraryReceipt(txId); }
+
+function printLibraryRegister(){
+  const allowedStudentIds=new Set(linkedStudentIdsForUser().map(Number));
+  const rows=(USER.role==='Parent'
+    ? DATA.libraryTransactions.filter(tx=>allowedStudentIds.has(Number(tx.studentId)))
+    : DATA.libraryTransactions
+  );
+
+  if(!rows.length){alert('There are no library transactions to print.');return;}
+
+  const body=[...rows].reverse().map(tx=>`<tr>
+    <td>${esc(tx.id)}</td>
+    <td>${esc(tx.studentName||'—')}</td>
+    <td>${esc(tx.studentClass||'—')}</td>
+    <td>${esc(tx.title||'—')}</td>
+    <td>${esc(tx.accessionNo||'—')}</td>
+    <td>${esc(tx.issueDate||'—')}</td>
+    <td>${esc(tx.dueDate||'—')}</td>
+    <td>${esc(tx.returnDate||'—')}</td>
+    <td>${esc(tx.status||'—')}</td>
+  </tr>`).join('');
+
+  const html=`<div class="register">
+    <h1>Vidyalaya School Library</h1>
+    <div class="sub">Library IN / OUT Register · Printed ${esc(new Date().toLocaleString('en-IN'))}</div>
+    <table>
+      <thead><tr>
+        <th>Txn #</th><th>Student</th><th>Class</th><th>Book</th><th>Accession No</th>
+        <th>Issue Date</th><th>Due Date</th><th>Return Date</th><th>Status</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`;
+
+  openPrintWindow(html,'Library IN / OUT Register');
+}
+
 function printReportCard(id){
   const r=DATA.reportcards.find(x=>x.id===id); if(!r)return; if(USER.role==='Parent'&&!canViewStudent(r.studentId)){alert('You do not have access to this report card.');return;}
   const s=DATA.students.find(x=>x.id===r.studentId);
