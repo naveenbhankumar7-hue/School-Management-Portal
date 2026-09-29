@@ -2083,7 +2083,9 @@ function loadData(){
 let LAST_SAVE_ERROR='';
 function saveData(){
   try{
-    localStorage.setItem('vidyalaya_data_v5',JSON.stringify(DATA));
+    const serialized=JSON.stringify(DATA);
+    localStorage.setItem('vidyalaya_data_v5',serialized);
+    if(typeof LAST_STORAGE_SNAPSHOT!=='undefined') LAST_STORAGE_SNAPSHOT=serialized;
     LAST_SAVE_ERROR='';
     return true;
   }catch(e){
@@ -2123,6 +2125,14 @@ function normalizeData(){
   seeded.forEach(k=>{ if(!Array.isArray(DATA[k])) DATA[k]=JSON.parse(JSON.stringify(SEED[k]||[])); });
   if(!Array.isArray(DATA.libraryTransactions)) DATA.libraryTransactions=[];
   if(!Array.isArray(DATA.chatMessages)) DATA.chatMessages=[];
+  DATA.chatMessages.forEach((m,i)=>{
+    if(!m.id) m.id=Date.now()+i;
+    if(m.fromId!==undefined && m.fromId!==null && m.fromId!=='') m.fromId=Number(m.fromId);
+    if(String(m.toId)!=='group' && m.toId!==undefined && m.toId!==null && m.toId!=='') m.toId=Number(m.toId);
+    if(m.text===undefined) m.text='';
+    if(m.imageData===undefined) m.imageData='';
+    if(!m.createdAt) m.createdAt='Earlier';
+  });
   DATA.feeMeta=(DATA.feeMeta&&typeof DATA.feeMeta==='object')?DATA.feeMeta:{lastProcessedMonth:monthKey()};
   if(!DATA.feeMeta.lastProcessedMonth) DATA.feeMeta.lastProcessedMonth=monthKey();
   DATA.biometric=(DATA.biometric&&typeof DATA.biometric==='object')?DATA.biometric:{apiUrl:''};
@@ -2151,8 +2161,15 @@ function normalizeData(){
     if(!u.username) u.username='user'+u.id;
     if(!u.displayName) u.displayName=u.username;
     if(!validRoles.includes(u.role)) u.role='Staff';
-    if(!Array.isArray(u.access)) u.access=[...DEFAULT_ACCESS[u.role]];
-    u.access=[...new Set(['dashboard',...u.access.filter(k=>ALL_MODULES.includes(k))])];
+
+    // Admin can never lose ERP administration rights.
+    if(u.role==='Admin'){
+      u.access=[...DEFAULT_ACCESS.Admin];
+    }else{
+      if(!Array.isArray(u.access)) u.access=[...DEFAULT_ACCESS[u.role]];
+      u.access=[...new Set(['dashboard',...u.access.filter(k=>ALL_MODULES.includes(k))])];
+    }
+
     if(u.role==='Parent'){
       if(!Array.isArray(u.linkedStudentIds)) u.linkedStudentIds=[];
       u.linkedStudentIds=u.linkedStudentIds.map(Number).filter(Number.isFinite);
@@ -2311,23 +2328,73 @@ function readSheet(file, done, msgId){
 }
 
 
-/* Keep open portal tabs synchronized with account changes made elsewhere. */
-window.addEventListener('storage',function(e){
-  if(e.key!=='vidyalaya_data_v5' || !e.newValue) return;
-  try{
-    const latest=JSON.parse(e.newValue);
-    if(!latest || typeof latest!=='object' || !Array.isArray(latest.users)) return;
+/* ---------------------------------------------------------
+   LIVE LOCAL CHAT / ACCOUNT SYNC
+   Keeps another open portal tab up to date when a message,
+   account change, notice, etc. is saved in the same browser.
+   --------------------------------------------------------- */
+let LAST_STORAGE_SNAPSHOT='';
 
-    // Never replace the active user's object in the middle of a mutation.
-    // On the login screen we can safely refresh immediately.
-    if(!USER){
-      DATA=latest;
-      normalizeData();
+function syncPortalDataFromStorage(refreshUi=true){
+  try{
+    const raw=localStorage.getItem('vidyalaya_data_v5');
+    if(!raw || raw===LAST_STORAGE_SNAPSHOT) return false;
+
+    const latest=JSON.parse(raw);
+    if(!latest || typeof latest!=='object' || !Array.isArray(latest.users)) return false;
+
+    const activeId=USER?Number(USER.id):null;
+    const activeUsername=USER?String(USER.username||'').toLowerCase():'';
+
+    DATA=latest;
+    normalizeData();
+    LAST_STORAGE_SNAPSHOT=raw;
+
+    if(USER){
+      const refreshedUser=
+        DATA.users.find(u=>Number(u.id)===activeId) ||
+        DATA.users.find(u=>String(u.username||'').toLowerCase()===activeUsername);
+
+      if(!refreshedUser){
+        alert('This user account is no longer available. Please sign in again.');
+        signOut();
+        return true;
+      }
+      USER=refreshedUser;
     }
+
+    if(refreshUi && USER){
+      if(CURRENT==='teamChat'){
+        // Preserve any text currently being typed while refreshing messages.
+        const input=document.getElementById('chatTextInput');
+        const draft=input?input.value:'';
+        renderNav();
+        renderView();
+        const restored=document.getElementById('chatTextInput');
+        if(restored) restored.value=draft;
+      }else if(CURRENT==='dashboard'){
+        renderNav();
+        renderView();
+      }else{
+        renderNav();
+      }
+    }
+    return true;
   }catch(err){
-    console.warn('Cross-tab portal update could not be applied.',err);
+    console.warn('Portal data synchronization failed.',err);
+    return false;
   }
+}
+
+window.addEventListener('storage',function(e){
+  if(e.key==='vidyalaya_data_v5') syncPortalDataFromStorage(true);
 });
+
+/* Some browsers are inconsistent with storage events for local HTML files,
+   so also poll gently while a user is signed in. */
+setInterval(function(){
+  if(USER) syncPortalDataFromStorage(true);
+},1500);
 
 /* ---------------- Auth ---------------- *//* ---------------- Auth ---------------- */
 let welcomeTimers=[];
@@ -2437,11 +2504,26 @@ function doSignIn(e){
     return false;
   }
 
-  // Always authenticate against the newest saved account list.
-  reloadPortalData();
+  // Always authenticate against the newest SAVED account list.
+  // Default/seed passwords are never consulted when saved account data exists.
+  let latestUsers=null;
+  try{
+    const raw=localStorage.getItem('vidyalaya_data_v5');
+    if(raw){
+      const latest=JSON.parse(raw);
+      if(latest && Array.isArray(latest.users)){
+        DATA=latest;
+        normalizeData();
+        latestUsers=DATA.users;
+      }
+    }
+  }catch(err){
+    console.warn('Latest account data could not be loaded for login.',err);
+  }
+  if(!latestUsers) latestUsers=DATA.users;
 
   const loginName=u.toLowerCase();
-  const found = DATA.users.find(x=>
+  const found = latestUsers.find(x=>
     String(x.username||'').trim().toLowerCase()===loginName &&
     String(x.password??'').trim()===p
   );
@@ -2531,7 +2613,8 @@ function renderNav(){
     const b=document.createElement('button');
     const isActive=(key===CURRENT)||(key==='modulesHub'&&!['dashboard','modulesHub','teamChat','noticeBoard'].includes(CURRENT));
     b.className='navitem'+(isActive?' active':'');
-    b.innerHTML=`<span class="nav-icon">${icon}</span><span>${MODULES[key]}</span>`;
+    const chatCount=(key==='teamChat'&&USER)?incomingChatMessages().length:0;
+    b.innerHTML=`<span class="nav-icon">${icon}</span><span>${MODULES[key]}</span>${chatCount?`<span style="margin-left:auto;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;background:var(--theme-accent,#ffc067);color:var(--theme-deep,#12264a);font-size:10px;font-weight:900">${chatCount>99?'99+':chatCount}</span>`:''}`;
     b.onclick=()=>{CURRENT=key; renderNav(); renderView();};
     nav.appendChild(b);
   });
@@ -2579,6 +2662,26 @@ const VIEWS = {
     const pendingFees = DATA.students.filter(s=>s.feeDue>0).length;
     const onLeave = DATA.teachers.filter(t=>t.status==='On Leave').length;
     const studyCount = DATA.studyMaterial.length;
+    const recentChats=latestDashboardMessages(5);
+    const chatPreview=recentChats.length
+      ? recentChats.map(m=>{
+          const sender=userById(m.fromId);
+          const senderName=sender?(sender.displayName||sender.username):'Portal User';
+          const isGroup=String(m.toId)==='group';
+          const preview=m.text
+            ? esc(m.text.length>90?m.text.slice(0,90)+'…':m.text)
+            : (m.imageData?'🖼 Image shared':'Message');
+          const target=isGroup?'group':m.fromId;
+          return `<button type="button" onclick="openChatFromDashboard('${esc(target)}')" style="width:100%;text-align:left;border:0;background:transparent;padding:11px 0;border-bottom:1px solid var(--theme-border,var(--line));color:inherit;cursor:pointer">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+              <div><strong style="font-size:13px">${esc(senderName)}</strong>${isGroup?` <span class="tag neutral" style="font-size:9px;padding:3px 6px">School Group</span>`:''}
+                <div class="muted" style="margin-top:4px">${preview}</div>
+              </div>
+              <small class="muted" style="white-space:nowrap">${esc(m.createdAt||'')}</small>
+            </div>
+          </button>`;
+        }).join('')
+      : `<div class="empty">No incoming chat messages yet.</div>`;
     return `<div class="home-hero">
       <div class="home-hero-card">
         <span class="eyebrow">Welcome back</span>
@@ -2606,7 +2709,19 @@ const VIEWS = {
       <div class="card quick-card"><div class="title">Pending fee accounts</div><div class="value">${pendingFees}</div><div class="caption">Students with dues pending</div></div>
       <div class="card quick-card"><div class="title">Staff on leave</div><div class="value">${onLeave}</div><div class="caption">Today's leave status</div></div>
     </div>
-    <div class="section"><h2>Latest notices</h2><div class="notice-list">${DATA.notices.slice(0,3).map(n=>`<div class="card notice-card"><strong>${esc(n.title)}</strong><span class="muted">${esc(n.date)}</span><p>${esc(n.body)}</p></div>`).join('')}</div></div>`;
+    <div class="grid2" style="align-items:start">
+      <div class="section" style="margin-bottom:0">
+        <h2>Recent Messages</h2>
+        <div class="card" style="padding:8px 16px">
+          ${chatPreview}
+          <button class="btn ghost sm" style="margin-top:12px" onclick="openCorePage('teamChat')">Open Team Chat</button>
+        </div>
+      </div>
+      <div class="section" style="margin-bottom:0">
+        <h2>Latest notices</h2>
+        <div class="notice-list">${DATA.notices.slice(0,3).map(n=>`<div class="card notice-card"><strong>${esc(n.title)}</strong><span class="muted">${esc(n.date)}</span><p>${esc(n.body)}</p></div>`).join('')}</div>
+      </div>
+    </div>`;
   },
   modulesHub(){
     return `<div class="modules-toolbar">
@@ -2949,20 +3064,20 @@ const VIEWS = {
   users(){
     if(USER.role!=='Admin') return '<p class="empty">You do not have access to this section.</p>';
     const roleOpts = Object.keys(DEFAULT_ACCESS).map(r=>`<option>${r}</option>`).join('');
-    let h = `<div class="card" style="margin-bottom:22px"><h3 style="font-size:16px;margin-bottom:10px">Add a new user</h3>
+    let h = `<div class="card" style="margin-bottom:22px"><h3 style="font-size:16px;margin-bottom:10px">Add a new user</h3><div class="tag good" style="margin-bottom:10px">Admin Full Control</div>
       <div class="form-grid"><div><label>Display name</label><input id="uName"></div><div><label>Username</label><input id="uUser"></div><div><label>Password</label><input id="uPass" type="password"></div><div><label>Role</label><select id="uRole" onchange="prefillAccess()">${roleOpts}</select></div></div>
       <div style="margin-top:12px"><label style="font-size:12px;color:var(--ink-soft)">Section access</label><div class="chk-list" id="newAccessList"></div></div>
       <button class="btn" style="margin-top:6px" onclick="addUser()">Create user</button><div id="userMsg" class="msg"></div></div>
       <div class="card" style="margin:0 0 14px;padding:13px 15px">
-        <strong style="font-size:13px">Starter Teacher Login</strong>
-        <div class="muted" style="margin-top:4px">Username: <b>teacher1</b> &nbsp; Password: <b>1234</b> — you can change the password and module access below.</div>
+        <strong style="font-size:13px">Account Security</strong>
+        <div class="muted" style="margin-top:4px">Admin can reset any user's password below. After a reset, only the newly saved password is valid. Default passwords are not used again for that saved account.</div>
       </div>
       <h3 style="font-size:16px;margin-bottom:6px">Existing users</h3>`;
     DATA.users.forEach(u=>{
       const lock=(u.id===USER.id);
       h += `<div class="userRow"><strong>${esc(u.displayName)}</strong> <span class="tag neutral">${esc(u.role)}</span> <span style="color:var(--ink-soft);font-size:12px">@${esc(u.username)}</span>
         ${u.id!==USER.id?`<button class="btn danger sm" style="float:right" onclick="deleteUser(${u.id})">Remove</button>`:''}
-        <div class="upload-row"><input id="resetPass${u.id}" type="password" placeholder="New password for this user"><button class="btn sm" onclick="adminResetPassword(${u.id})">Update Password</button></div>
+        <div class="upload-row"><input id="resetPass${u.id}" type="password" placeholder="Enter NEW password"><button class="btn sm" onclick="adminResetPassword(${u.id})">Save New Password</button></div><div class="muted" style="margin-top:4px">Username: <b>${esc(u.username)}</b> · Saving a new password immediately invalidates the previous password.</div>
         ${u.role==='Parent'?`<div style="margin:10px 0"><label style="font-size:12px;color:var(--ink-soft);font-weight:700">Linked student(s)</label><select multiple size="${Math.min(5,Math.max(2,DATA.students.length))}" style="width:100%;margin-top:5px" onchange="setParentLinks(${u.id},this)">${DATA.students.map(s=>`<option value="${s.id}" ${(u.linkedStudentIds||[]).includes(s.id)?'selected':''}>${esc(s.name)} — ${esc(s.cls)}</option>`).join('')}</select><div class="muted">Hold Ctrl/Cmd to select more than one child.</div></div>`:''}
         <div class="chk-list">${ALL_MODULES.map(m=>`<label><input type="checkbox" ${u.access.includes(m)?'checked':''} ${(lock||m==='dashboard')?'disabled':''} onchange="toggleUserAccess(${u.id},'${m}',this.checked)"> ${MODULES[m]}</label>`).join('')}</div>
       </div>`;
@@ -3022,8 +3137,33 @@ function chatImageSelected(){
 }
 function getVisibleChatMessages(){
   const all=DATA.chatMessages||[];
+  const me=Number(USER.id);
   if(CHAT_TARGET==='group') return all.filter(m=>String(m.toId)==='group');
-  const t=Number(CHAT_TARGET); return all.filter(m=>(m.fromId===USER.id&&m.toId===t)||(m.fromId===t&&m.toId===USER.id));
+  const t=Number(CHAT_TARGET);
+  return all.filter(m=>
+    (Number(m.fromId)===me && Number(m.toId)===t) ||
+    (Number(m.fromId)===t && Number(m.toId)===me)
+  );
+}
+
+function incomingChatMessages(){
+  if(!USER) return [];
+  const me=Number(USER.id);
+  return (DATA.chatMessages||[]).filter(m=>
+    (String(m.toId)==='group' && Number(m.fromId)!==me) ||
+    Number(m.toId)===me
+  );
+}
+
+function latestDashboardMessages(limit=5){
+  return incomingChatMessages().slice(-limit).reverse();
+}
+
+function openChatFromDashboard(target){
+  CHAT_TARGET=String(target);
+  CURRENT='teamChat';
+  renderNav();
+  renderView();
 }
 function renderChatThread(){
   const thread=document.getElementById('chatThread'); if(!thread) return;
@@ -3033,12 +3173,18 @@ function renderChatThread(){
   else {const u=userById(CHAT_TARGET);title.textContent=u?u.displayName:'Conversation';sub.textContent=u?u.role:'Portal user';}
   const msgs=getVisibleChatMessages();
   if(!msgs.length){thread.innerHTML='<div class="chat-empty">No messages yet.<br>Start the conversation with a message or image.</div>';return;}
-  thread.innerHTML=msgs.map(m=>{const mine=m.fromId===USER.id;const sender=userById(m.fromId);const initials=esc(((sender?.displayName||'User').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase());return `<div class="chat-row ${mine?'mine':''}"><span class="chat-avatar">${initials||'U'}</span><div class="chat-bubble">${m.imageData?`<img src="${m.imageData}" alt="Shared image">`:''}${m.text?`<div>${esc(m.text)}</div>`:''}<span class="chat-time">${esc(m.createdAt||'')}</span></div></div>`}).join('');
+  thread.innerHTML=msgs.map(m=>{const mine=Number(m.fromId)===Number(USER.id);const sender=userById(m.fromId);const initials=esc(((sender?.displayName||'User').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('')).toUpperCase());return `<div class="chat-row ${mine?'mine':''}"><span class="chat-avatar">${initials||'U'}</span><div class="chat-bubble">${m.imageData?`<img src="${m.imageData}" alt="Shared image">`:''}${m.text?`<div>${esc(m.text)}</div>`:''}<span class="chat-time">${esc(m.createdAt||'')}</span></div></div>`}).join('');
   thread.scrollTop=thread.scrollHeight;
 }
 function chatKeyDown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}}
 function sendChatMessage(){
   const input=document.getElementById('chatTextInput'), fileEl=document.getElementById('chatImageInput'), msg=document.getElementById('chatMsg');
+  const selectedTarget=CHAT_TARGET;
+
+  // Merge the newest saved messages before adding ours, so sending from
+  // two open accounts does not overwrite the other person's message.
+  syncPortalDataFromStorage(false);
+  CHAT_TARGET=selectedTarget;
   const textVal=(input?.value||'').trim(), file=fileEl?.files?.[0];
   if(!textVal&&!file){if(msg){msg.className='msg err';msg.textContent='Write a message or attach an image.';}return;}
   if(file && !file.type.startsWith('image/')){msg.className='msg err';msg.textContent='Only image files can be shared.';return;}
@@ -3297,22 +3443,70 @@ function changePassword(){
   document.getElementById('curPass').value=document.getElementById('newPass').value=document.getElementById('confPass').value='';
 }
 function adminResetPassword(userId){
-  if(!USER || USER.role!=='Admin') return;
-  const u=DATA.users.find(x=>x.id===Number(userId));
+  if(!USER || USER.role!=='Admin'){
+    alert('Only the Admin account can reset user passwords.');
+    return;
+  }
+
+  const id=Number(userId);
+  const u=DATA.users.find(x=>Number(x.id)===id);
   const el=document.getElementById('resetPass'+userId);
-  if(!u||!el)return;
+  if(!u||!el) return;
+
   const pw=el.value.trim();
-  if(pw.length<4){alert('Password must be at least 4 characters.');return;}
-  const old=u.password;
+  if(pw.length<4){
+    alert('Password must be at least 4 characters.');
+    return;
+  }
+
+  const oldPassword=String(u.password??'');
+  if(pw===oldPassword){
+    alert('The new password is the same as the current password. Enter a different password.');
+    return;
+  }
+
   u.password=pw;
+  u.credentialUpdatedAt=new Date().toISOString();
+  u.credentialUpdatedBy=USER.username;
+
   if(!saveData()){
-    u.password=old;
+    u.password=oldPassword;
+    delete u.credentialUpdatedAt;
+    delete u.credentialUpdatedBy;
     alert('Password could not be saved. '+(LAST_SAVE_ERROR||'Browser storage error.'));
     return;
   }
+
+  // Re-read localStorage and verify the exact new password was persisted.
+  let verified=false;
+  try{
+    const raw=localStorage.getItem('vidyalaya_data_v5');
+    const saved=raw?JSON.parse(raw):null;
+    const savedUser=saved && Array.isArray(saved.users)
+      ? saved.users.find(x=>Number(x.id)===id)
+      : null;
+    verified=!!savedUser && String(savedUser.password??'')===pw;
+  }catch(err){
+    verified=false;
+  }
+
+  if(!verified){
+    u.password=oldPassword;
+    saveData();
+    alert('Password verification failed. The old password has been restored. Please try again.');
+    return;
+  }
+
   el.value='';
-  alert('Password updated for '+u.displayName+'.');
+  if(Number(USER.id)===id) USER.password=pw;
+
+  alert(
+    'Password updated successfully for '+u.displayName+'.\n\n'+
+    'Username: '+u.username+'\n'+
+    'The OLD password is now invalid. Use only the NEW password at the next login.'
+  );
 }
+
 function prefillAccess(){
   const roleEl = document.getElementById('uRole'), list = document.getElementById('newAccessList');
   if(!roleEl || !list) return;
@@ -3404,13 +3598,35 @@ function addUser(){
   }
 }
 function toggleUserAccess(userId, key, checked){
-  if(USER.role!=='Admin') return;
+  if(!USER || USER.role!=='Admin') return;
   if(key==='dashboard') return;
-  const u = DATA.users.find(x=>x.id===userId); if(!u) return;
+
+  const u=DATA.users.find(x=>Number(x.id)===Number(userId));
+  if(!u) return;
+
+  // Admin accounts permanently retain full ERP rights.
+  if(u.role==='Admin'){
+    u.access=[...DEFAULT_ACCESS.Admin];
+    saveData();
+    alert('Admin access is protected and cannot be reduced.');
+    renderView();
+    return;
+  }
+
   if(checked && !u.access.includes(key)) u.access.push(key);
-  if(!checked) u.access = u.access.filter(k=>k!==key);
-  saveData();
-  if(USER && USER.id===userId){ if(!USER.access.includes(CURRENT)) CURRENT = USER.access[0]||'dashboard'; renderNav(); }
+  if(!checked) u.access=u.access.filter(k=>k!==key);
+
+  if(!saveData()){
+    alert('Access change could not be saved. '+(LAST_SAVE_ERROR||'Browser storage error.'));
+    reloadPortalData();
+    renderView();
+    return;
+  }
+
+  if(USER && USER.id===userId){
+    if(!USER.access.includes(CURRENT)) CURRENT=USER.access[0]||'dashboard';
+    renderNav();
+  }
 }
 function deleteUser(id){
   if(USER.role!=='Admin') return;
